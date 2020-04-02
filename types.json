@@ -1,0 +1,18 @@
+{
+  "Address": "AccountId",
+  "Node": {
+    "account": "AccountId",
+    "amt": "Balance"
+  },
+  "Model": {
+    "account": "AccountId",
+    "payment": "u32",
+    "cid": "H256"
+  },
+  "Task": {
+    "account": "H256",
+    "amt": "Balance",
+    "model_id": "Hash",
+    "cid": "Hash"
+  }
+}

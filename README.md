@@ -1,6 +1,11 @@
 # Substrate Node Template
 
-A new SRML-based Substrate node, ready for hacking.
+A new Substrate node, ready for hacking. This node includes:
+
+* A FRAME-based runtime
+* A template pallet
+* Aura block authoring
+* Grandpa finality gadget
 
 ## Build
 
@@ -10,7 +15,7 @@ Install Rust:
 curl https://sh.rustup.rs -sSf | sh
 ```
 
-Install required tools:
+Initialize your Wasm Build environment:
 
 ```bash
 ./scripts/init.sh
@@ -19,22 +24,28 @@ Install required tools:
 Build Wasm and native code:
 
 ```bash
-cargo build
+cargo build --release
 ```
 
 ## Run
 
-### Single node development chain
+### Single Node Development Chain
 
-You can start a development chain with:
+Purge any existing developer chain state:
 
 ```bash
-cargo run -- --dev
+./target/release/tea purge-chain --dev
+```
+
+Start a development chain with:
+
+```bash
+./target/release/tea --dev
 ```
 
 Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1 cargo run -- --dev`.
 
-### Multi-node local testnet
+### Multi-Node Local Testnet
 
 If you want to see the multi-node consensus algorithm in action locally, then you can create a local testnet with two validator nodes for Alice and Bob, who are the initial authorities of the genesis chain that have been endowed with testnet units.
 
@@ -68,3 +79,29 @@ cargo run -- \
 ```
 
 Additional CLI usage options are available and may be shown by running `cargo run -- --help`.
+
+## Advanced: Generate Your Own Substrate Node Template
+
+A substrate node template is always based on a certain version of Substrate. You can inspect it by
+opening [Cargo.toml](Cargo.toml) and see the template referred to a specific Substrate commit(
+`rev` field), branch, or version.
+
+You can generate your own Substrate tea based on a particular Substrate
+version/commit by running following commands:
+
+```bash
+# git clone from the main Substrate repo
+git clone https://github.com/paritytech/substrate.git
+cd substrate
+
+# Switch to a particular branch or commit of the Substrate repo your tea based on
+git checkout <branch/tag/sha1>
+
+# Run the helper script to generate a node template.
+# This script compiles Substrate and takes a while to complete. It takes a relative file path
+#   from the current dir. to output the compressed node template.
+.maintain/tea-release.sh ../tea.tar.gz
+```
+
+Noted though you will likely get faster and more thorough support if you stick with the releases
+provided in this repository.
