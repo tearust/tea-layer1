@@ -6,6 +6,7 @@ license = 'Unlicense'
 name = 'tea-runtime'
 repository = 'https://github.com/paritytech/substrate/'
 version = '2.0.0-alpha.3'
+
 [build-dependencies.wasm-builder-runner]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-wasm-builder-runner'
@@ -178,12 +179,6 @@ package = 'frame-system'
 rev = '013c1ee167354a08283fb69915fda56a62fee943'
 version = '2.0.0-alpha.3'
 
-[dependencies.template]
-default-features = false
-package = 'pallet-template'
-path = '../pallets/template'
-version = '2.0.0-alpha.3'
-
 [dependencies.timestamp]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -196,4 +191,16 @@ default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'pallet-transaction-payment'
 rev = '013c1ee167354a08283fb69915fda56a62fee943'
+version = '2.0.0-alpha.3'
+
+[dependencies.template]
+default-features = false
+package = 'pallet-template'
+path = '../pallets/template'
+version = '2.0.0-alpha.3'
+
+[dependencies.tea]
+default-features = false
+package = 'pallet-tea'
+path = '../pallets/tea'
 version = '2.0.0-alpha.3'

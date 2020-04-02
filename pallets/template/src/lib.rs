@@ -28,7 +28,7 @@ pub trait Trait: system::Trait {
 
 // This pallet's storage items.
 decl_storage! {
-	trait Store for Module<T: Trait> as TemplateModule {
+	trait Store for Module<T: Trait> as TeaModule {
 		// Just a dummy storage item.
 		// Here we are declaring a StorageValue, `Something` as a Option<u32>
 		// `get(fn something)` is the default getter which returns either the stored `u32` or `None` if nothing stored
