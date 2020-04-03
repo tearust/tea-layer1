@@ -14,5 +14,10 @@
     "amt": "Balance",
     "model_id": "Hash",
     "cid": "Hash"
+  },
+  "Competitor": {
+    "account": "H256",
+    "task_id": "Hash",
+    "random_value": "H256"
   }
 }
