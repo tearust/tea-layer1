@@ -1,11 +1,4 @@
-# Substrate Node Template
-
-A new Substrate node, ready for hacking. This node includes:
-
-* A FRAME-based runtime
-* A template pallet
-* Aura block authoring
-* Grandpa finality gadget
+# TeaRust Blockchain
 
 ## Build
 
