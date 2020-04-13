@@ -206,4 +206,14 @@ impl<T: Trait> Module<T> {
 		);
 		payload.using_encoded(blake2_256)
 	}
+
+	pub fn get_sum() -> u32 {
+        100 + 200
+	}
+}
+
+sp_api::decl_runtime_apis! {
+    pub trait TeaApi {
+        fn get_sum() -> u32;
+    }
 }
