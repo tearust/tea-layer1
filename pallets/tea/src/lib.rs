@@ -33,21 +33,11 @@ pub trait Trait: balances::Trait {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct Node<AccountId, Balance> {
-	account: AccountId,
-	amt: Balance,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct ProofOfVrf<Hash> {
-	j: u64,
-	proof: Vec<u8>,
-	pub_key: Hash,
-	value: Vec<u8>,
-	task_id: Hash,
-	block_height: u64,
+pub struct Node {
+	key: Vec<u8>,
+	amt: u64,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -79,7 +69,7 @@ pub struct Competitor<AccountId> {
 decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
 		Nodes get(nodes):
-			map hasher(blake2_256) T::AccountId => Node<T::AccountId, T::Balance>;
+			map hasher(blake2_256) Vec<u8> => Node;
 		Models get(models):
 			map hasher(blake2_256) Vec<u8> => Model<T::AccountId>;
 		Tasks get(tasks):
@@ -94,9 +84,8 @@ decl_event!(
 	pub enum Event<T>
 	where
 		AccountId = <T as system::Trait>::AccountId,
-	  	Balance = <T as balances::Trait>::Balance,
 	{
-		NewNodeJoined(AccountId, Balance),
+		NewNodeJoined(AccountId, u64),
 		NewLambadaAdded(AccountId),
 		NewTaskAdded(AccountId),
 		NewCompetitorAdded(AccountId),
@@ -126,14 +115,14 @@ decl_module! {
 		// this is needed only if you are using events in your pallet
 		fn deposit_event() = default;
 
-		pub fn new_node_join(origin, deposit_amt: T::Balance) {
+		pub fn new_node_join(origin, key: Vec<u8>, amt: u64) {
 		    let sender = ensure_signed(origin)?;
             let new_node = Node {
-                account: sender.clone(),
-                amt: deposit_amt,
+            	key: key.clone(),
+            	amt,
             };
-            <Nodes<T>>::insert(sender.clone(), new_node);
-            Self::deposit_event(RawEvent::NewNodeJoined(sender, deposit_amt));
+            <Nodes>::insert(key, new_node);
+            Self::deposit_event(RawEvent::NewNodeJoined(sender, amt));
 		}
 
 		pub fn remote_attestation_done(origin) {
@@ -208,12 +197,17 @@ impl<T: Trait> Module<T> {
 	}
 
 	pub fn get_sum() -> u32 {
-        100 + 200
+		100 + 200
+	}
+
+	pub fn get_node(key: Vec<u8>) -> Node {
+		return Self::nodes(key)
 	}
 }
 
 sp_api::decl_runtime_apis! {
     pub trait TeaApi {
         fn get_sum() -> u32;
+        fn get_node(key: Vec<u8>) -> Node;
     }
 }

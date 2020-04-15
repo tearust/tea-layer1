@@ -2785,6 +2785,7 @@ dependencies = [
  "pallet-randomness-collective-flip",
  "parity-scale-codec",
  "safe-mix",
+ "serde",
  "sp-api",
  "sp-core",
  "sp-io",
@@ -5315,6 +5316,7 @@ name = "tea"
 version = "2.0.0-alpha.3"
 dependencies = [
  "futures 0.3.4",
+ "hex",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",

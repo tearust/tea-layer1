@@ -1,8 +1,8 @@
 {
   "Address": "AccountId",
   "Node": {
-    "account": "AccountId",
-    "amt": "Balance"
+    "key": "Bytes",
+    "amt": "u64"
   },
   "Model": {
     "account": "AccountId",

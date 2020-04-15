@@ -9,27 +9,8 @@ use sp_runtime::{
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::{Error as BlockChainError, HeaderMetadata, HeaderBackend};
 use tea_runtime::tea::TeaApi;
-
-// #[rpc]
-// pub trait SillyRpc {
-//     #[rpc(name = "silly_seven")]
-//     fn silly_7(&self) -> Result<u64>;
-//
-//     #[rpc(name = "silly_double")]
-//     fn silly_double(&self, val: u64) -> Result<u64>;
-// }
-//
-// pub struct Silly;
-//
-// impl SillyRpc for Silly {
-//     fn silly_7(&self) -> Result<u64> {
-//         Ok(7)
-//     }
-//
-//     fn silly_double(&self, val: u64) -> Result<u64> {
-//         Ok(2 * val)
-//     }
-// }
+use std::vec::Vec;
+use hex::FromHex;
 
 #[rpc]
 pub trait TeaNodeApi<BlockHash> {
@@ -38,6 +19,13 @@ pub trait TeaNodeApi<BlockHash> {
         &self,
         at: Option<BlockHash>,
     ) -> Result<u32>;
+
+    #[rpc(name = "tea_getNode")]
+    fn get_node(
+        &self,
+        key: String,
+        at: Option<BlockHash>,
+    ) -> Result<tea_runtime::tea::Node>;
 }
 
 /// A struct that implements the `TeaApi`.
@@ -75,6 +63,31 @@ impl<C, Block> TeaNodeApi<<Block as BlockT>::Hash> for TeaNode<C, Block>
         runtime_api_result.map_err(|e| RpcError {
             code: ErrorCode::ServerError(9876), // No real reason for this value
             message: "Something wrong".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
+    }
+
+    fn get_node(
+        &self,
+        key_hex: String,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<tea_runtime::tea::Node> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(||
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash
+        ));
+
+        let key = Vec::from_hex(key_hex).map_err(|e| RpcError{
+            code: ErrorCode::ServerError(9875), // No real reason for this value
+            message: "Invalid key hex string.".into(),
+            data: Some(format!("{:?}", e).into()),
+        })?;
+
+        let runtime_api_result = api.get_node(&at, key);
+        runtime_api_result.map_err(|e| RpcError {
+            code: ErrorCode::ServerError(9876), // No real reason for this value
+            message: "Get node info failed.".into(),
             data: Some(format!("{:?}", e).into()),
         })
     }

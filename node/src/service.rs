@@ -93,11 +93,8 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 		)?
 		.with_rpc_extensions(|builder,| -> Result<RpcExtension, _>{
 			let mut io = jsonrpc_core::IoHandler::default();
-
 			// Use the fully qualified name starting from `crate` because we're in macro_rules!
-			// io.extend_with(crate::rpc::SillyRpc::to_delegate(crate::rpc::Silly{}));
 			io.extend_with(crate::rpc::TeaNodeApi::to_delegate(crate::rpc::TeaNode::new(builder.client().clone())));
-
 			Ok(io)
 		})?
 		.build()?;

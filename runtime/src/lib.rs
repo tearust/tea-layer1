@@ -284,6 +284,9 @@ impl_runtime_apis! {
 		fn get_sum() -> u32 {
             Tea::get_sum()
         }
+        fn get_node(key: Vec<u8>) -> tea::Node {
+        	Tea::get_node(key)
+        }
 	}
 
 	impl sp_api::Core<Block> for Runtime {

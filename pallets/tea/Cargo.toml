@@ -8,6 +8,9 @@ name = 'pallet-tea'
 repository = 'https://github.com/paritytech/substrate/'
 version = '2.0.0-alpha.3'
 
+[dependencies]
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
+
 [dependencies.codec]
 default-features = false
 features = ['derive']
@@ -85,5 +88,6 @@ std = [
     'safe-mix/std',
     'system/std',
     'sp-std/std',
+    'serde',
 ]
 
