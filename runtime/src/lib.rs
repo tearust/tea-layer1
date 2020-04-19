@@ -280,7 +280,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive = frame_executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
 
 impl_runtime_apis! {
-	impl tea::TeaApi<Block> for Runtime {
+	impl tea::api::TeaApi<Block> for Runtime {
 		fn get_sum() -> u32 {
             Tea::get_sum()
         }

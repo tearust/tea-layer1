@@ -6,7 +6,7 @@ mod chain_spec;
 mod service;
 mod cli;
 mod command;
-mod rpc;
+mod jsonrpc;
 
 fn main() -> sc_cli::Result<()> {
 	let version = sc_cli::VersionInfo {

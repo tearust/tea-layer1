@@ -12,7 +12,7 @@
 use system::ensure_signed;
 use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, decl_error, dispatch,
-			  ensure, StorageMap, StorageValue, traits::{Randomness, Currency}};
+			  StorageMap, StorageValue, traits::{Randomness, Currency}};
 use sp_std::vec::Vec;
 use sp_io::hashing::blake2_256;
 
@@ -21,6 +21,8 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+pub mod api;
 
 use pallet_balances as balances;
 
@@ -203,11 +205,4 @@ impl<T: Trait> Module<T> {
 	pub fn get_node(key: Vec<u8>) -> Node {
 		return Self::nodes(key)
 	}
-}
-
-sp_api::decl_runtime_apis! {
-    pub trait TeaApi {
-        fn get_sum() -> u32;
-        fn get_node(key: Vec<u8>) -> Node;
-    }
 }

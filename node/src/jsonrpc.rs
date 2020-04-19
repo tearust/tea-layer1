@@ -1,14 +1,13 @@
 use jsonrpc_derive::rpc;
-use jsonrpc_core::{IoHandler, Error as RpcError, Result, ErrorCode};
-use jsonrpc_core::futures::future::{self, FutureResult};
+use jsonrpc_core::{Error as RpcError, Result, ErrorCode};
 use std::sync::Arc;
 use sp_runtime::{
     generic::BlockId,
-    traits::{Block as BlockT, HashFor, NumberFor, Hash}
+    traits::{Block as BlockT, Hash}
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::{Error as BlockChainError, HeaderMetadata, HeaderBackend};
-use tea_runtime::tea::TeaApi;
+use tea_runtime::tea::api::TeaApi;
 use std::vec::Vec;
 use hex::FromHex;
 
