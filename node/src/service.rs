@@ -114,7 +114,7 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 
 		let aura = sc_consensus_aura::start_aura::<_, _, _, _, _, AuraPair, _, _, _>(
 			sc_consensus_aura::slot_duration(&*client)?,
-			client,
+			client.clone(),
 			select_chain,
 			block_import,
 			proposer,
@@ -124,6 +124,9 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 			service.keystore(),
 			can_author_with,
 		)?;
+
+		// start nats service here
+		crate::nats::NatsServer::start_nats_service(client);
 
 		// the AURA authoring task is considered essential, i.e. if it
 		// fails we take down the service with it.

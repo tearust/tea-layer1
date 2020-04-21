@@ -24,6 +24,12 @@ cargo build --release
 
 ### Single Node Development Chain
 
+Start nats service
+```
+docker pull nats-streaming
+docker run -p 4222:4222 -ti nats-streaming:latest
+```
+
 Purge any existing developer chain state:
 
 ```bash
@@ -37,6 +43,15 @@ Start a development chain with:
 ```
 
 Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1 cargo run -- --dev`.
+
+Nats Api
+> Use nats.rs example cli for test
+
+- Get node info
+```bash
+cargo run --example nats-box -- request layer1 eb628d56ad353cc7a9b4db31aae999c402a02da9da6d2651a8e9aa2f73920b95
+```
+
 
 ### Multi-Node Local Testnet
 
@@ -98,3 +113,7 @@ git checkout <branch/tag/sha1>
 
 Noted though you will likely get faster and more thorough support if you stick with the releases
 provided in this repository.
+
+## Nats API
+
+

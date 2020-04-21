@@ -7,6 +7,7 @@ mod service;
 mod cli;
 mod command;
 mod jsonrpc;
+mod nats;
 
 fn main() -> sc_cli::Result<()> {
 	let version = sc_cli::VersionInfo {
