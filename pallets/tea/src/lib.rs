@@ -14,6 +14,7 @@ use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, decl_error, dispatch,
 			  StorageMap, StorageValue, traits::{Randomness, Currency}};
 use sp_std::vec::Vec;
+use frame_support::sp_runtime::RuntimeString;
 use sp_io::hashing::blake2_256;
 
 #[cfg(test)]
@@ -204,5 +205,13 @@ impl<T: Trait> Module<T> {
 
 	pub fn get_node(key: Vec<u8>) -> Node {
 		return Self::nodes(key)
+	}
+
+	pub fn get_bootstrap() -> Vec<RuntimeString> {
+		let mut bootstrap = Vec::new();
+        bootstrap.push(RuntimeString::from("localhost:8010"));
+		bootstrap.push(RuntimeString::from("localhost:8020"));
+
+		bootstrap
 	}
 }

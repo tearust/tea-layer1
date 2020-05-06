@@ -4,7 +4,7 @@ use sp_api::ProvideRuntimeApi;
 use tea_runtime::tea::api::TeaApi;
 use sp_runtime::{
     generic::BlockId,
-    traits::{Block as BlockT, Hash}
+    traits::{Block as BlockT, Hash},
 };
 use sp_blockchain::{Error as BlockChainError, HeaderMetadata, HeaderBackend};
 use serde_json;
@@ -27,7 +27,8 @@ impl<C, Block> NatsServer<C, Block>
     pub fn start_nats_service(client: Arc<C>) -> std::io::Result<()> {
         let nc = nats::connect("localhost")?;
 
-        Self::sub_node_info(client, &nc)?;
+        Self::sub_node_info(client.clone(), &nc)?;
+        Self::sub_bootstrap(client, &nc)?;
 
         Ok(())
     }
@@ -56,6 +57,23 @@ impl<C, Block> NatsServer<C, Block>
 
         Ok(())
     }
+
+    fn sub_bootstrap(client: Arc<C>, nc: &nats::Connection) -> std::io::Result<()> {
+        let subject = String::from("layer1.bootstrap");
+        let sub = nc.subscribe(&subject)?;
+        std::thread::spawn(move || {
+            for msg in sub.messages() {
+                println!("Received a request {}", msg);
+                let api = client.runtime_api();
+                let at = BlockId::hash(client.info().best_hash);
+                let bootstrap = api.get_bootstrap(&at).unwrap();
+                msg.respond(serde_json::to_vec(&bootstrap).unwrap());
+            }
+        });
+        println!("Listening for requests on '{}'", subject);
+
+        Ok(())
+    }
 }
 
 fn hex_to_vec(hex: Vec<u8>) -> Result<Vec<u8>, String> {
@@ -72,5 +90,5 @@ fn hex_to_vec(hex: Vec<u8>) -> Result<Vec<u8>, String> {
         Err(e) => {
             Err(format!("{:?}", e))
         }
-    }
+    };
 }
