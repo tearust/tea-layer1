@@ -25,14 +25,18 @@ impl<C, Block> NatsServer<C, Block>
         C::Api: TeaApi<Block>,
 {
     pub fn start_nats_service(client: Arc<C>) -> std::io::Result<()> {
-        let subject = String::from("layer1");
-        let resp = String::from("layer1 reply");
-
         let nc = nats::connect("localhost")?;
+
+        Self::sub_node_info(client, &nc)?;
+
+        Ok(())
+    }
+
+    fn sub_node_info(client: Arc<C>, nc: &nats::Connection) -> std::io::Result<()> {
+        let subject = String::from("layer1.node_info");
         let sub = nc.subscribe(&subject)?;
         std::thread::spawn(move || {
             for msg in sub.messages() {
-                // println!("Received a {}", msg);
                 println!("Received a request {}", msg);
                 let api = client.runtime_api();
                 let at = BlockId::hash(client.info().best_hash);
@@ -48,8 +52,8 @@ impl<C, Block> NatsServer<C, Block>
                 }
             }
         });
-
         println!("Listening for requests on '{}'", subject);
+
         Ok(())
     }
 }

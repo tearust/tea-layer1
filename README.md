@@ -26,8 +26,8 @@ cargo build --release
 
 Start nats service
 ```
-docker pull nats-streaming
-docker run -p 4222:4222 -ti nats-streaming:latest
+docker pull nats
+docker run -p 4222:4222 -ti nats:latest
 ```
 
 Purge any existing developer chain state:
@@ -45,7 +45,7 @@ Start a development chain with:
 Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1 cargo run -- --dev`.
 
 Nats Api
-> Use nats.rs example cli for test
+> Use nats-box an example of nats.rs for testing
 
 - Get node info
 ```bash
