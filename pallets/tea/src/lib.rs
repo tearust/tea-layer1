@@ -209,8 +209,8 @@ impl<T: Trait> Module<T> {
 
 	pub fn get_bootstrap() -> Vec<RuntimeString> {
 		let mut bootstrap = Vec::new();
-        bootstrap.push(RuntimeString::from("localhost:8010"));
-		bootstrap.push(RuntimeString::from("localhost:8020"));
+        bootstrap.push(RuntimeString::from("tea-node1"));
+		bootstrap.push(RuntimeString::from("tea-node2"));
 
 		bootstrap
 	}

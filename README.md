@@ -51,9 +51,11 @@ Nats Api
 ```bash
 cargo run --example nats-box -- request layer1.node_info eb628d56ad353cc7a9b4db31aae999c402a02da9da6d2651a8e9aa2f73920b95
 ```
+
 - Get bootstrap
 ```bash
-cargo run --example nats-box -- request layer1.bootstrap
+cargo run --example nats-box -- sub layer1_reply
+cargo run --example nats-box -- pub layer1.async.layer1_reply.bootstrap 123
 ```
 
 ### Multi-Node Local Testnet

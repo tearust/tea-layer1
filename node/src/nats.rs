@@ -28,7 +28,7 @@ impl<C, Block> NatsServer<C, Block>
         let nc = nats::connect("localhost")?;
 
         Self::sub_node_info(client.clone(), &nc)?;
-        Self::sub_bootstrap(client, &nc)?;
+        Self::layer1_async(client, nc)?;
 
         Ok(())
     }
@@ -58,16 +58,32 @@ impl<C, Block> NatsServer<C, Block>
         Ok(())
     }
 
-    fn sub_bootstrap(client: Arc<C>, nc: &nats::Connection) -> std::io::Result<()> {
-        let subject = String::from("layer1.bootstrap");
+    fn layer1_async(client: Arc<C>, nc: nats::Connection) -> std::io::Result<()> {
+        let subject = String::from("layer1.async.*.>");
         let sub = nc.subscribe(&subject)?;
         std::thread::spawn(move || {
             for msg in sub.messages() {
                 println!("Received a request {}", msg);
-                let api = client.runtime_api();
-                let at = BlockId::hash(client.info().best_hash);
-                let bootstrap = api.get_bootstrap(&at).unwrap();
-                msg.respond(serde_json::to_vec(&bootstrap).unwrap());
+                // Subject should follow the format 'layer1.async.{reply_to}.{action}'.
+                let sub_sections: Vec<_> = msg.subject.split('.').collect();
+                if sub_sections.len() < 4 {
+                    println!("Invalid subject format");
+                    continue;
+                }
+                let reply_to = sub_sections[2];
+                let action = sub_sections[3];
+                match action {
+                    "bootstrap" => {
+                        let api = client.runtime_api();
+                        let at = BlockId::hash(client.info().best_hash);
+                        let bootstrap = api.get_bootstrap(&at).unwrap();
+                        nc.publish(reply_to, serde_json::to_vec(&bootstrap).unwrap());
+                    }
+                    _ => {
+                        let error = format!("error: action {:?} is not support", action);
+                        nc.publish(reply_to, serde_json::to_vec(error.as_str()).unwrap());
+                    }
+                }
             }
         });
         println!("Listening for requests on '{}'", subject);
