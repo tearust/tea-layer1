@@ -61,7 +61,7 @@ impl<C, Block> NatsServer<C, Block>
     fn layer1_async(client: Arc<C>, nc: nats::Connection) -> std::io::Result<()> {
         let subject = String::from("layer1.async.*.>");
         let sub = nc.subscribe(&subject)?;
-        std::thread::spawn(move || {
+        std::thread::spawn(move || ->std::io::Result<()> {
             for msg in sub.messages() {
                 println!("Received a request {}", msg);
                 // Subject should follow the format 'layer1.async.{reply_to}.{action}'.
@@ -72,22 +72,38 @@ impl<C, Block> NatsServer<C, Block>
                 }
                 let reply_to = sub_sections[2];
                 let action = sub_sections[3];
+                let api = client.runtime_api();
+                let at = BlockId::hash(client.info().best_hash);
                 match action {
                     "bootstrap" => {
-                        let api = client.runtime_api();
-                        let at = BlockId::hash(client.info().best_hash);
                         let bootstrap = api.get_bootstrap(&at).unwrap();
-                        nc.publish(reply_to, serde_json::to_vec(&bootstrap).unwrap());
+                        let reply_to_data = format!("{}.action.{}", reply_to, action);
+                        nc.publish(reply_to_data.as_str(), serde_json::to_vec(&bootstrap).unwrap())?;
+                    }
+                    "node_info" => {
+                        let key_vec = hex_to_vec(msg.data.clone());
+                        match key_vec {
+                            Ok(key) => {
+                                let node_info = api.get_node(&at, key).unwrap();
+                                let reply_to_data = format!("{}.action.{}", reply_to, action);
+                                nc.publish(reply_to_data.as_str(), serde_json::to_vec(&node_info).unwrap())?;
+                            }
+                            Err(e) => {
+                                let reply_to_error = format!("{}.error.invalid_node_key", reply_to);
+                                nc.publish(reply_to_error.as_str(), "")?;
+                            }
+                        }
                     }
                     _ => {
-                        let error = format!("error: action {:?} is not support", action);
-                        nc.publish(reply_to, serde_json::to_vec(error.as_str()).unwrap());
+                        let reply_to_error = format!("{}.error.action_{}_dose_not_support", reply_to, action);
+                        nc.publish(reply_to_error.as_str(), "")?;
                     }
                 }
             }
+            Ok(())
         });
-        println!("Listening for requests on '{}'", subject);
 
+        println!("Listening for requests on '{}'", subject);
         Ok(())
     }
 }
