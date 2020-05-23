@@ -23,8 +23,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub mod api;
-
 use pallet_balances as balances;
 
 /// The pallet's configuration trait.
@@ -197,21 +195,5 @@ impl<T: Trait> Module<T> {
 			<system::Module<T>>::block_number(),
 		);
 		payload.using_encoded(blake2_256)
-	}
-
-	pub fn get_sum() -> u32 {
-		100 + 200
-	}
-
-	pub fn get_node(key: Vec<u8>) -> Node {
-		return Self::nodes(key)
-	}
-
-	pub fn get_bootstrap() -> Vec<RuntimeString> {
-		let mut bootstrap = Vec::new();
-        bootstrap.push(RuntimeString::from("tea-node1"));
-		bootstrap.push(RuntimeString::from("tea-node2"));
-
-		bootstrap
 	}
 }

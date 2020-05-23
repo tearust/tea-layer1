@@ -15,9 +15,8 @@ use sp_runtime::{
 	impl_opaque_keys, MultiSignature,
 };
 use sp_runtime::traits::{
-	BlakeTwo256, Block as BlockT, IdentityLookup, Verify, ConvertInto, IdentifyAccount,
+	BlakeTwo256, Block as BlockT, IdentityLookup, Verify, ConvertInto, IdentifyAccount
 };
-use sp_runtime::RuntimeString;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use grandpa::AuthorityList as GrandpaAuthorityList;
@@ -281,18 +280,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive = frame_executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
 
 impl_runtime_apis! {
-	impl tea::api::TeaApi<Block> for Runtime {
-		fn get_sum() -> u32 {
-            Tea::get_sum()
-        }
-        fn get_node(key: Vec<u8>) -> tea::Node {
-        	Tea::get_node(key)
-        }
-        fn get_bootstrap() -> Vec<RuntimeString> {
-        	Tea::get_bootstrap()
-        }
-	}
-
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
 			VERSION

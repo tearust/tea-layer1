@@ -70,7 +70,6 @@ macro_rules! new_full_start {
 pub fn new_full(config: Configuration<GenesisConfig>)
 	-> Result<impl AbstractService, ServiceError>
 {
-	type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 	let is_authority = config.roles.is_authority();
 	let force_authoring = config.force_authoring;
 	let name = config.name.clone();
@@ -91,12 +90,6 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 		.with_finality_proof_provider(|client, backend|
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
 		)?
-		.with_rpc_extensions(|builder,| -> Result<RpcExtension, _>{
-			let mut io = jsonrpc_core::IoHandler::default();
-			// Use the fully qualified name starting from `crate` because we're in macro_rules!
-			io.extend_with(crate::jsonrpc::TeaNodeApi::to_delegate(crate::jsonrpc::TeaNode::new(builder.client().clone())));
-			Ok(io)
-		})?
 		.build()?;
 
 	if participates_in_consensus {
@@ -114,7 +107,7 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 
 		let aura = sc_consensus_aura::start_aura::<_, _, _, _, _, AuraPair, _, _, _>(
 			sc_consensus_aura::slot_duration(&*client)?,
-			client.clone(),
+			client,
 			select_chain,
 			block_import,
 			proposer,
@@ -124,9 +117,6 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 			service.keystore(),
 			can_author_with,
 		)?;
-
-		// start nats service here
-		crate::nats::NatsServer::start_nats_service(client);
 
 		// the AURA authoring task is considered essential, i.e. if it
 		// fails we take down the service with it.
