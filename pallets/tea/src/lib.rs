@@ -33,12 +33,15 @@ pub trait Trait: balances::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
+type TeaId = Vec<u8>;
+type PeerId = Vec<u8>;
+
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Node {
-	key: Vec<u8>,
-	amt: u64,
+	tea_id: TeaId,
+	peer_id: PeerId,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -49,47 +52,25 @@ pub struct Model<AccountId> {
 	cid: Vec<u8>,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct Task<AccountId, Balance> {
-	account: AccountId,
-	amt: Balance,
-	model_id: Vec<u8>,
-	cid: Vec<u8>,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct Competitor<AccountId> {
-	account: AccountId,
-	task_id: Vec<u8>,
-    random_value: [u8; 32],
-}
-
-// This pallet's storage items.
 decl_storage! {
-	trait Store for Module<T: Trait> as TemplateModule {
+	trait Store for Module<T: Trait> as TeaModule {
+		BootNodes get(bootnodes)
+			build(|_| vec!["tea-node1".into(), "tea-node2".into()]): Vec<Vec<u8>>;
 		Nodes get(nodes):
-			map hasher(blake2_256) Vec<u8> => Node;
+			// build(|_| vec![("tea-node1".into(), ()),("tea-node2".into(), ())]):
+			map hasher(blake2_256) TeaId => Node;
 		Models get(models):
 			map hasher(blake2_256) Vec<u8> => Model<T::AccountId>;
-		Tasks get(tasks):
-			map hasher(blake2_256) Vec<u8> => Task<T::AccountId, T::Balance>;
-		TaskCompetitions get(task_competitions):
-			map hasher(blake2_256) Vec<u8> => Vec<Competitor<T::AccountId>>;
 	}
 }
 
-// The pallet's events
 decl_event!(
 	pub enum Event<T>
 	where
 		AccountId = <T as system::Trait>::AccountId,
 	{
-		NewNodeJoined(AccountId, u64),
+		NewNodeJoined(AccountId, Vec<u8>),
 		NewLambadaAdded(AccountId),
-		NewTaskAdded(AccountId),
-		NewCompetitorAdded(AccountId),
 	}
 );
 
@@ -116,18 +97,14 @@ decl_module! {
 		// this is needed only if you are using events in your pallet
 		fn deposit_event() = default;
 
-		pub fn new_node_join(origin, key: Vec<u8>, amt: u64) {
+		pub fn new_node_join(origin, tea_id: TeaId, peer_id: PeerId) {
 		    let sender = ensure_signed(origin)?;
             let new_node = Node {
-            	key: key.clone(),
-            	amt,
+            	tea_id: tea_id.clone(),
+            	peer_id: peer_id.clone(),
             };
-            <Nodes>::insert(key, new_node);
-            Self::deposit_event(RawEvent::NewNodeJoined(sender, amt));
-		}
-
-		pub fn remote_attestation_done(origin) {
-		    let _ = ensure_signed(origin)?;
+            <Nodes>::insert(tea_id, new_node);
+            Self::deposit_event(RawEvent::NewNodeJoined(sender, peer_id));
 		}
 
 		pub fn update_lambda(origin, payment: u32, cid: Vec<u8>) {
@@ -139,48 +116,6 @@ decl_module! {
             };
             <Models<T>>::insert(cid, new_model);
             Self::deposit_event(RawEvent::NewLambadaAdded(sender));
-		}
-
-		pub fn compute_task( origin, amt: T::Balance, model_id: Vec<u8>, cid: Vec<u8>) {
-		    let sender = ensure_signed(origin)?;
-            let new_task = Task {
-                account: sender.clone(),
-                amt,
-                model_id,
-                cid: cid.clone(),
-            };
-            <Tasks<T>>::insert(cid, new_task);
-            Self::deposit_event(RawEvent::NewTaskAdded(sender));
-		}
-
-		pub fn compute_task_winner_app(origin, task_id: Vec<u8>) -> dispatch::DispatchResult  {
-		    let sender = ensure_signed(origin)?;
-		    let random_value = Self::random_value(&sender, task_id.clone());
-            let new_competitor = Competitor {
-                account: sender.clone(),
-                task_id: task_id.clone(),
-                random_value,
-            };
-            let mut competitors = Self::task_competitions(task_id.clone());
-            competitors.push(new_competitor);
-            <TaskCompetitions<T>>::insert(task_id, competitors);
-            Self::deposit_event(RawEvent::NewCompetitorAdded(sender));
-			Ok(())
-		}
-
-		pub fn compute_task_execution_done(origin) {
-		    let _ = ensure_signed(origin)?;
-
-		}
-
-		pub fn compute_task_ra_done(origin) {
-		    let _ = ensure_signed(origin)?;
-
-		}
-
-		pub fn compute_task_owner_confirmation_done(origin) {
-		    let _ = ensure_signed(origin)?;
-
 		}
 	}
 }

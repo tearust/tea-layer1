@@ -4,20 +4,6 @@
     "key": "Bytes",
     "amt": "u64"
   },
-  "Model": {
-    "account": "AccountId",
-    "payment": "u32",
-    "cid": "H256"
-  },
-  "Task": {
-    "account": "H256",
-    "amt": "Balance",
-    "model_id": "Hash",
-    "cid": "Hash"
-  },
-  "Competitor": {
-    "account": "H256",
-    "task_id": "Hash",
-    "random_value": "H256"
-  }
+  "TeaId": "Vec<u8>",
+  "PeerId": "Vec<u8>"
 }
