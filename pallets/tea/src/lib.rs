@@ -69,7 +69,8 @@ decl_event!(
 	where
 		AccountId = <T as system::Trait>::AccountId,
 	{
-		NewNodeJoined(AccountId, Vec<u8>),
+		NewNodeJoined(AccountId, TeaId),
+		UpdateNodePeer(AccountId, TeaId, PeerId),
 		NewLambadaAdded(AccountId),
 	}
 );
@@ -97,14 +98,22 @@ decl_module! {
 		// this is needed only if you are using events in your pallet
 		fn deposit_event() = default;
 
-		pub fn new_node_join(origin, tea_id: TeaId, peer_id: PeerId) {
+		pub fn add_new_node(origin, tea_id: TeaId) {
 		    let sender = ensure_signed(origin)?;
             let new_node = Node {
             	tea_id: tea_id.clone(),
-            	peer_id: peer_id.clone(),
+            	peer_id: Vec::new(),
             };
-            <Nodes>::insert(tea_id, new_node);
-            Self::deposit_event(RawEvent::NewNodeJoined(sender, peer_id));
+            <Nodes>::insert(tea_id.clone(), new_node);
+            Self::deposit_event(RawEvent::NewNodeJoined(sender, tea_id));
+		}
+
+		pub fn update_peer_id(origin, tea_id: TeaId, peer_id: PeerId) {
+			let sender = ensure_signed(origin)?;
+			let mut node = <Nodes>::get(&tea_id);
+			node.peer_id = peer_id.clone();
+			<Nodes>::insert(tea_id.clone(), node);
+            Self::deposit_event(RawEvent::UpdateNodePeer(sender, tea_id, peer_id));
 		}
 
 		pub fn update_lambda(origin, payment: u32, cid: Vec<u8>) {
