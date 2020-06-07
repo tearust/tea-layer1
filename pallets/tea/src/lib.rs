@@ -36,12 +36,12 @@ pub trait Trait: balances::Trait {
 type TeaId = Vec<u8>;
 type PeerId = Vec<u8>;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Node {
 	tea_id: TeaId,
-	peer_id: PeerId,
+	peers: Vec<PeerId>,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -70,7 +70,7 @@ decl_event!(
 		AccountId = <T as system::Trait>::AccountId,
 	{
 		NewNodeJoined(AccountId, TeaId),
-		UpdateNodePeer(AccountId, TeaId, PeerId),
+		UpdateNodePeer(AccountId, Node),
 		NewLambadaAdded(AccountId),
 	}
 );
@@ -102,18 +102,18 @@ decl_module! {
 		    let sender = ensure_signed(origin)?;
             let new_node = Node {
             	tea_id: tea_id.clone(),
-            	peer_id: Vec::new(),
+            	peers: Vec::new(),
             };
             <Nodes>::insert(tea_id.clone(), new_node);
             Self::deposit_event(RawEvent::NewNodeJoined(sender, tea_id));
 		}
 
-		pub fn update_peer_id(origin, tea_id: TeaId, peer_id: PeerId) {
+		pub fn update_peer_id(origin, tea_id: TeaId, peers: Vec<PeerId>) {
 			let sender = ensure_signed(origin)?;
 			let mut node = <Nodes>::get(&tea_id);
-			node.peer_id = peer_id.clone();
-			<Nodes>::insert(tea_id.clone(), node);
-            Self::deposit_event(RawEvent::UpdateNodePeer(sender, tea_id, peer_id));
+			node.peers = peers;
+			<Nodes>::insert(tea_id, node.clone());
+            Self::deposit_event(RawEvent::UpdateNodePeer(sender, node));
 		}
 
 		pub fn update_lambda(origin, payment: u32, cid: Vec<u8>) {

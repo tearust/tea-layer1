@@ -1,15 +1,15 @@
 {
   "Weight": "u32",
   "Address": "AccountId",
+  "TeaId": "Bytes",
+  "PeerId": "Bytes",
   "Node": {
-    "TeaId": "Bytes",
-    "PeerId": "u64"
+    "TeaId": "TeaId",
+    "Peers": "Vec<PeerId>"
   },
   "Model": {
     "account": "AccountId",
     "payment": "u32",
     "cid": "H256"
-  },
-  "TeaId": "Bytes",
-  "PeerId": "Bytes"
+  }
 }
