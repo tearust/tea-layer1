@@ -5312,7 +5312,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c63f48baada5c52e65a29eef93ab4f8982681b67f9e8d29c7b05abcfec2b9ffe"
 
 [[package]]
-name = "tea"
+name = "tea-layer1"
 version = "2.0.0-alpha.3"
 dependencies = [
  "futures 0.3.4",

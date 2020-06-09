@@ -12,7 +12,7 @@ fn main() -> sc_cli::Result<()> {
 		name: "Substrate Node",
 		commit: env!("VERGEN_SHA_SHORT"),
 		version: env!("CARGO_PKG_VERSION"),
-		executable_name: "tea",
+		executable_name: "tea-layer1",
 		author: "Anonymous",
 		description: "Template Node",
 		support_url: "support.anonymous.an",
