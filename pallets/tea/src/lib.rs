@@ -48,8 +48,19 @@ pub struct Node {
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Model<AccountId> {
 	account: AccountId,
-	payment: u32,
+	price: u32,
 	cid: Vec<u8>,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct Task<AccountId> {
+	account: AccountId,
+	payment: u32,
+	peer_id: Vec<u8>,
+    cap_cid: Vec<u8>,
+	model_cid: Vec<u8>,
+	data_cid: Vec<u8>,
 }
 
 decl_storage! {
@@ -71,7 +82,7 @@ decl_event!(
 	{
 		NewNodeJoined(AccountId, TeaId),
 		UpdateNodePeer(AccountId, Node),
-		NewLambadaAdded(AccountId),
+		NewModelAdded(AccountId),
 	}
 );
 
@@ -116,15 +127,27 @@ decl_module! {
             Self::deposit_event(RawEvent::UpdateNodePeer(sender, node));
 		}
 
-		pub fn update_lambda(origin, payment: u32, cid: Vec<u8>) {
+		pub fn add_new_model(origin, price: u32, cid: Vec<u8>) {
 		    let sender = ensure_signed(origin)?;
             let new_model = Model {
                 account: sender.clone(),
-                payment,
+                price,
                 cid: cid.clone(),
             };
             <Models<T>>::insert(cid, new_model);
-            Self::deposit_event(RawEvent::NewLambadaAdded(sender));
+            Self::deposit_event(RawEvent::NewModelAdded(sender));
+		}
+
+		pub fn add_new_task(origin, payment: u32, model_cid: u32, data_cid: u32) {
+			let sender = ensure_signed(origin)?;
+
+			// emit event with task id (new)
+		}
+
+		pub fn complete_task(origin, task_id: Vec<u8>, proof: Vec<u8>) {
+			let sender = ensure_signed(origin)?;
+
+			// emit event with task id (finish)
 		}
 	}
 }
