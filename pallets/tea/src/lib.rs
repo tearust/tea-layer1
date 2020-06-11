@@ -13,7 +13,7 @@ use system::ensure_signed;
 use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, decl_error, dispatch,
 			  StorageMap, StorageValue, traits::{Randomness, Currency}};
-use sp_std::vec::Vec;
+use sp_std::prelude::*;
 use frame_support::sp_runtime::RuntimeString;
 use sp_io::hashing::blake2_256;
 
@@ -54,8 +54,8 @@ pub struct Model<AccountId> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
-		BootNodes get(bootnodes)
-			build(|_| vec!["tea-node1".into(), "tea-node2".into()]): Vec<Vec<u8>>;
+		BootNodes get(bootnodes):
+			Vec<Vec<u8>> = vec!["tea-node1".into(), "tea-node2".into()];
 		Nodes get(nodes):
 			// build(|_| vec![("tea-node1".into(), ()),("tea-node2".into(), ())]):
 			map hasher(blake2_256) TeaId => Node;
