@@ -54,8 +54,8 @@ pub struct Model<AccountId> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
-		BootNodes get(bootnodes)
-			build(|_| vec!["tea-node1".into(), "tea-node2".into()]): Vec<Vec<u8>>;
+		BootNodes get(bootnodes):
+			Vec<Vec<u8>> = ["tea-node1".into(), "tea-node2".into()].to_vec();
 		Nodes get(nodes):
 			// build(|_| vec![("tea-node1".into(), ()),("tea-node2".into(), ())]):
 			map hasher(blake2_256) TeaId => Node;
