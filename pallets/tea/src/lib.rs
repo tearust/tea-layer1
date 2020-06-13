@@ -86,7 +86,7 @@ decl_event!(
 		NewNodeJoined(AccountId, Node),
 		UpdateNodePeer(AccountId, Node),
 		NewModelAdded(AccountId),
-		NewTaskAdded(AccountId, Task),
+		NewTaskAdded(AccountId, Node, Task),
 	}
 );
 
@@ -164,6 +164,9 @@ decl_module! {
 		    cap_cid: Vec<u8>, model_cid: Vec<u8>, data_cid: Vec<u8>, payment: u32) {
 			let sender = ensure_signed(origin)?;
 
+		    ensure!(Nodes::contains_key(&delegate_node), Error::<T>::NodeNotExist);
+		    let node = Nodes::get(&delegate_node).unwrap();
+
 			let next_task_index = Self::next_task_index()?;
             let new_task = Task {
                 delegate_node,
@@ -177,7 +180,7 @@ decl_module! {
             Tasks::insert(next_task_index, &new_task);
             // fixme: maybe should use checked_add
             TasksCount::put(next_task_index + 1);
-            Self::deposit_event(RawEvent::NewTaskAdded(sender, new_task));
+            Self::deposit_event(RawEvent::NewTaskAdded(sender, node, new_task));
 		}
 
 		pub fn complete_task(origin, task_id: Vec<u8>, proof: Vec<u8>) {
