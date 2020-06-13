@@ -3,6 +3,7 @@
   "Address": "AccountId",
   "TeaId": "Bytes",
   "PeerId": "Bytes",
+  "TaskIndex": "u32",
   "Node": {
     "TeaId": "TeaId",
     "Peers": "Vec<PeerId>"
@@ -11,5 +12,13 @@
     "account": "AccountId",
     "payment": "u32",
     "cid": "H256"
+  },
+  "Task": {
+    "delegate_node": "TeaId",
+    "ref_num": "u32",
+    "cap_cid": "Bytes",
+    "model_cid": "Bytes",
+    "data_cid": "Bytes",
+    "payment": "u32"
   }
 }
