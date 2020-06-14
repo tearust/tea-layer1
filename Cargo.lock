@@ -2781,11 +2781,13 @@ version = "2.0.0-alpha.3"
 dependencies = [
  "frame-support",
  "frame-system",
+ "hex",
  "pallet-balances",
  "pallet-randomness-collective-flip",
  "parity-scale-codec",
  "safe-mix",
  "serde",
+ "serde_json",
  "sp-api",
  "sp-core",
  "sp-io",

@@ -25,7 +25,7 @@ mod tests;
 use pallet_balances as balances;
 
 /// The pallet's configuration trait.
-pub trait Trait: balances::Trait {
+pub trait Trait: system::Trait {
     // Add other types and constants required to configure this pallet.
 
     /// The overarching event type.
