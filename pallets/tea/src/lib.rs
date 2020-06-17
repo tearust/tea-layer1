@@ -12,9 +12,13 @@
 use system::ensure_signed;
 use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, decl_error, dispatch,
-                    StorageMap, StorageValue, traits::{Randomness, Currency}, ensure};
+                    StorageMap, StorageValue, ensure,
+                    traits::{Randomness, Currency, ExistenceRequirement, WithdrawReason, WithdrawReasons,
+                             OnUnbalanced, Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
+use sp_core::{crypto, ed25519, sr25519, ecdsa, hash::{H256, H512}};
+use pallet_balances as balances;
 
 #[cfg(test)]
 mod mock;
@@ -22,15 +26,15 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use pallet_balances as balances;
-
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait {
-    // Add other types and constants required to configure this pallet.
-
-    /// The overarching event type.
+pub trait Trait: balances::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+    type Currency: Currency<Self::AccountId>;
 }
+
+type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+// type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::NegativeImbalance;
 
 type TeaId = Vec<u8>;
 type PeerId = Vec<u8>;
@@ -54,13 +58,13 @@ pub struct Model<AccountId> {
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct Task {
+pub struct Task<Balance> {
     delegate_node: TeaId,
     ref_num: u32,
     cap_cid: Vec<u8>,
     model_cid: Vec<u8>,
     data_cid: Vec<u8>,
-    payment: u32,
+    payment: Balance,
 }
 
 decl_storage! {
@@ -73,7 +77,7 @@ decl_storage! {
 		Models get(models):
 			map hasher(blake2_256) Vec<u8> => Model<T::AccountId>;
 		Tasks get(tasks):
-			map hasher(blake2_256) TaskIndex => Option<Task>;
+			map hasher(blake2_256) TaskIndex => Option<Task<BalanceOf<T>>>;
 		TasksCount get(tasks_count): TaskIndex;
 	}
 }
@@ -82,11 +86,13 @@ decl_event!(
 	pub enum Event<T>
 	where
 		AccountId = <T as system::Trait>::AccountId,
+		Balance = BalanceOf<T>,
 	{
 		NewNodeJoined(AccountId, Node),
 		UpdateNodePeer(AccountId, Node),
 		NewModelAdded(AccountId),
-		NewTaskAdded(AccountId, Node, Task),
+		NewTaskAdded(AccountId, Node, TaskIndex, Task<Balance>),
+		CompleteTask(AccountId, Task<Balance>, Balance),
 	}
 );
 
@@ -161,46 +167,68 @@ decl_module! {
 		}
 
 		pub fn add_new_task(origin, delegate_node: TeaId, ref_num: u32,
-		    cap_cid: Vec<u8>, model_cid: Vec<u8>, data_cid: Vec<u8>, payment: u32) {
+		    cap_cid: Vec<u8>, model_cid: Vec<u8>, data_cid: Vec<u8>, payment: BalanceOf<T>) {
 			let sender = ensure_signed(origin)?;
 
 		    ensure!(Nodes::contains_key(&delegate_node), Error::<T>::NodeNotExist);
 		    let node = Nodes::get(&delegate_node).unwrap();
 
 			let next_task_index = Self::next_task_index()?;
+
+            let neg_imbalance = T::Currency::withdraw(&sender,
+		        payment,
+		        WithdrawReasons::except(WithdrawReason::TransactionPayment),
+		        ExistenceRequirement::AllowDeath)?;
+
             let new_task = Task {
                 delegate_node,
                 ref_num,
                 cap_cid,
                 model_cid,
                 data_cid,
-                payment,
+                payment: neg_imbalance.peek(),
             };
 
-            Tasks::insert(next_task_index, &new_task);
-            // fixme: maybe should use checked_add
+            Tasks::<T>::insert(&next_task_index, &new_task);
             TasksCount::put(next_task_index + 1);
-            Self::deposit_event(RawEvent::NewTaskAdded(sender, node, new_task));
+
+            Self::deposit_event(RawEvent::NewTaskAdded(sender, node, next_task_index, new_task));
 		}
 
-		pub fn complete_task(origin, task_id: Vec<u8>, proof: Vec<u8>) {
-			let sender = ensure_signed(origin)?;
+		pub fn complete_task(origin, task_id: u32) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
 
-			// emit event with task id (finish)
+		    // T::Currency::transfer(&sender, &to, price, ExistenceRequirement::AllowDeath)?;
+		    // let neg_imbalance = T::Currency::withdraw(&sender,
+		    //     price,
+		    //     WithdrawReasons::except(WithdrawReason::TransactionPayment),
+		    //     ExistenceRequirement::AllowDeath)?;
+		    ensure!(Tasks::<T>::contains_key(&task_id), Error::<T>::TaskNotExist);
+		    let task = Tasks::<T>::get(&task_id).unwrap();
+
+            let positive_imbalance = T::Currency::deposit_creating(&sender, task.payment.clone());
+
+            Self::deposit_event(RawEvent::CompleteTask(sender, task, positive_imbalance.peek()));
+
+		    Ok(())
 		}
 	}
 }
 
 impl<T: Trait> Module<T> {
-    fn random_value(sender: &T::AccountId, task_id: Vec<u8>) -> [u8; 32] {
+    fn random_value(sender: &T::AccountId, data: Vec<u8>) -> H256 {
         let random_seed = <pallet_randomness_collective_flip::Module<T>>::random_seed();
         let payload = (
             random_seed,
             sender.clone(),
-            task_id,
+            data,
             <system::Module<T>>::block_number(),
         );
-        payload.using_encoded(blake2_256)
+        payload.using_encoded(blake2_256).into()
+    }
+
+    fn get_task_id(task: &Task<BalanceOf<T>>) -> H256 {
+        task.using_encoded(blake2_256).into()
     }
 
     fn next_task_index() -> sp_std::result::Result<TaskIndex, dispatch::DispatchError> {

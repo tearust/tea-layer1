@@ -231,6 +231,7 @@ impl template::Trait for Runtime {
 
 impl tea::Trait for Runtime {
 	type Event = Event;
+	type Currency = balances::Module<Runtime>;
 }
 
 construct_runtime!(
