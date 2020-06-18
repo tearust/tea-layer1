@@ -38,7 +38,6 @@ type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::Ac
 
 type TeaId = Vec<u8>;
 type PeerId = Vec<u8>;
-type TaskIndex = u32;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
@@ -77,8 +76,7 @@ decl_storage! {
 		Models get(models):
 			map hasher(blake2_256) Vec<u8> => Model<T::AccountId>;
 		Tasks get(tasks):
-			map hasher(blake2_256) TaskIndex => Option<Task<BalanceOf<T>>>;
-		TasksCount get(tasks_count): TaskIndex;
+			map hasher(blake2_256) H256 => Option<Task<BalanceOf<T>>>;
 	}
 }
 
@@ -91,7 +89,7 @@ decl_event!(
 		NewNodeJoined(AccountId, Node),
 		UpdateNodePeer(AccountId, Node),
 		NewModelAdded(AccountId),
-		NewTaskAdded(AccountId, Node, TaskIndex, Task<Balance>),
+		NewTaskAdded(AccountId, Node, H256, Task<Balance>),
 		CompleteTask(AccountId, Task<Balance>, Balance),
 	}
 );
@@ -173,8 +171,6 @@ decl_module! {
 		    ensure!(Nodes::contains_key(&delegate_node), Error::<T>::NodeNotExist);
 		    let node = Nodes::get(&delegate_node).unwrap();
 
-			let next_task_index = Self::next_task_index()?;
-
             let neg_imbalance = T::Currency::withdraw(&sender,
 		        payment,
 		        WithdrawReasons::except(WithdrawReason::TransactionPayment),
@@ -188,21 +184,16 @@ decl_module! {
                 data_cid,
                 payment: neg_imbalance.peek(),
             };
+            let task_id = Self::get_task_id(&sender, &new_task);
 
-            Tasks::<T>::insert(&next_task_index, &new_task);
-            TasksCount::put(next_task_index + 1);
+            Tasks::<T>::insert(task_id, &new_task);
 
-            Self::deposit_event(RawEvent::NewTaskAdded(sender, node, next_task_index, new_task));
+            Self::deposit_event(RawEvent::NewTaskAdded(sender, node, task_id, new_task));
 		}
 
-		pub fn complete_task(origin, task_id: u32) -> dispatch::DispatchResult {
+		pub fn complete_task(origin, task_id: H256) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 
-		    // T::Currency::transfer(&sender, &to, price, ExistenceRequirement::AllowDeath)?;
-		    // let neg_imbalance = T::Currency::withdraw(&sender,
-		    //     price,
-		    //     WithdrawReasons::except(WithdrawReason::TransactionPayment),
-		    //     ExistenceRequirement::AllowDeath)?;
 		    ensure!(Tasks::<T>::contains_key(&task_id), Error::<T>::TaskNotExist);
 		    let task = Tasks::<T>::get(&task_id).unwrap();
 
@@ -216,25 +207,14 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    fn random_value(sender: &T::AccountId, data: Vec<u8>) -> H256 {
+    fn get_task_id(sender: &T::AccountId, task: &Task<BalanceOf<T>>) -> H256 {
         let random_seed = <pallet_randomness_collective_flip::Module<T>>::random_seed();
         let payload = (
             random_seed,
             sender.clone(),
-            data,
+            task,
             <system::Module<T>>::block_number(),
         );
         payload.using_encoded(blake2_256).into()
-    }
-
-    fn get_task_id(task: &Task<BalanceOf<T>>) -> H256 {
-        task.using_encoded(blake2_256).into()
-    }
-
-    fn next_task_index() -> sp_std::result::Result<TaskIndex, dispatch::DispatchError> {
-        let task_index = Self::tasks_count();
-        ensure!(task_index != TaskIndex::MAX, Error::<T>::TaskCountOverflow);
-
-        Ok(task_index)
     }
 }

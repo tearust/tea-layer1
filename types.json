@@ -3,7 +3,6 @@
   "Address": "AccountId",
   "TeaId": "Bytes",
   "PeerId": "Bytes",
-  "TaskIndex": "u32",
   "Node": {
     "TeaId": "TeaId",
     "Peers": "Vec<PeerId>"
