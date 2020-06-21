@@ -59,7 +59,8 @@ pub struct Model<AccountId> {
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Task<Balance> {
     delegate_node: TeaId,
-    ref_num: u32,
+    ref_num: Vec<u8>,
+    rsa_pub: Vec<u8>,
     cap_cid: Vec<u8>,
     model_cid: Vec<u8>,
     data_cid: Vec<u8>,
@@ -164,7 +165,7 @@ decl_module! {
             Ok(())
 		}
 
-		pub fn add_new_task(origin, delegate_node: TeaId, ref_num: u32,
+		pub fn add_new_task(origin, delegate_node: TeaId, ref_num: Vec<u8>, rsa_pub: Vec<u8>,
 		    cap_cid: Vec<u8>, model_cid: Vec<u8>, data_cid: Vec<u8>, payment: BalanceOf<T>) {
 			let sender = ensure_signed(origin)?;
 
@@ -179,6 +180,7 @@ decl_module! {
             let new_task = Task {
                 delegate_node,
                 ref_num,
+                rsa_pub,
                 cap_cid,
                 model_cid,
                 data_cid,
