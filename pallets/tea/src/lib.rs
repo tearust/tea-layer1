@@ -62,6 +62,8 @@ pub struct Task<Balance> {
     ref_num: Vec<u8>,
     rsa_pub: Vec<u8>,
     cap_cid: Vec<u8>,
+    manifest_cid: Vec<u8>,
+    wasm_cid: Vec<u8>,
     model_cid: Vec<u8>,
     data_cid: Vec<u8>,
     payment: Balance,
@@ -165,8 +167,17 @@ decl_module! {
             Ok(())
 		}
 
-		pub fn add_new_task(origin, delegate_node: TeaId, ref_num: Vec<u8>, rsa_pub: Vec<u8>,
-		    cap_cid: Vec<u8>, model_cid: Vec<u8>, data_cid: Vec<u8>, payment: BalanceOf<T>) {
+		pub fn add_new_task(origin,
+		    delegate_node: TeaId,
+		    ref_num: Vec<u8>,
+		    rsa_pub: Vec<u8>,
+		    cap_cid: Vec<u8>,
+		    manifest_cid: Vec<u8>,
+		    wasm_cid: Vec<u8>,
+		    model_cid: Vec<u8>,
+		    data_cid: Vec<u8>,
+		    payment: BalanceOf<T>)
+		{
 			let sender = ensure_signed(origin)?;
 
 		    ensure!(Nodes::contains_key(&delegate_node), Error::<T>::NodeNotExist);
@@ -182,6 +193,8 @@ decl_module! {
                 ref_num,
                 rsa_pub,
                 cap_cid,
+                manifest_cid,
+                wasm_cid,
                 model_cid,
                 data_cid,
                 payment: neg_imbalance.peek(),

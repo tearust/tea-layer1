@@ -17,6 +17,8 @@
     "ref_num": "Bytes",
     "rsa_pub": "Bytes",
     "cap_cid": "Bytes",
+    "manifest_cid": "Bytes",
+    "wasm_cid": "Bytes",
     "model_cid": "Bytes",
     "data_cid": "Bytes",
     "payment": "u32"
