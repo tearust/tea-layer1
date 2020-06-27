@@ -58,6 +58,7 @@ pub struct Model<AccountId> {
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Task<Balance> {
+    ref_num: Vec<u8>,
     delegate_node: TeaId,
     model_cid: Vec<u8>,
     body_cid: Vec<u8>,
@@ -74,7 +75,7 @@ decl_storage! {
 		Models get(models):
 			map hasher(blake2_256) Vec<u8> => Model<T::AccountId>;
 		Tasks get(tasks):
-			map hasher(blake2_256) H256 => Option<Task<BalanceOf<T>>>;
+			map hasher(blake2_256) Vec<u8> => Option<Task<BalanceOf<T>>>;
 	}
 }
 
@@ -82,15 +83,14 @@ decl_event!(
 	pub enum Event<T>
 	where
 		AccountId = <T as system::Trait>::AccountId,
-		Balance = BalanceOf<T>,
-		TaskId = H256,
+		RefNum = Vec<u8>,
 		Result = Vec<u8>,
 	{
 		NewNodeJoined(AccountId, Node),
 		UpdateNodePeer(AccountId, Node),
 		NewModelAdded(AccountId),
-		NewTaskAdded(AccountId, Node, TaskId, Task<Balance>),
-		CompleteTask(AccountId, TaskId, Result),
+		NewTaskAdded(AccountId, RefNum, Node),
+		CompleteTask(AccountId, RefNum, Result),
 	}
 );
 
@@ -165,6 +165,7 @@ decl_module! {
 		}
 
 		pub fn add_new_task(origin,
+		    ref_num: Vec<u8>,
 		    delegate_node: TeaId,
 		    model_cid: Vec<u8>,
 		    body_cid: Vec<u8>,
@@ -181,22 +182,22 @@ decl_module! {
 		        ExistenceRequirement::AllowDeath)?;
 
             let new_task = Task {
+                ref_num: ref_num.clone(),
                 delegate_node,
                 model_cid,
                 body_cid,
                 payment: neg_imbalance.peek(),
             };
-            let task_id = Self::get_task_id(&sender, &new_task);
 
-            Tasks::<T>::insert(task_id, &new_task);
+            Tasks::<T>::insert(&ref_num, &new_task);
 
-            Self::deposit_event(RawEvent::NewTaskAdded(sender, node, task_id, new_task));
+            Self::deposit_event(RawEvent::NewTaskAdded(sender, ref_num, node));
 		}
 
 		pub fn complete_task(
 		    origin,
+		    ref_num: Vec<u8>,
 		    winner_tea_id: Vec<u8>,
-		    task_id: H256,
 		    delegate_sig: Vec<u8>,
 		    result: Vec<u8>,
 		    result_sig: Vec<u8>
@@ -206,8 +207,8 @@ decl_module! {
 		    // check if (sender, tea_id) exist
 		    // check the delegate signature
 
-		    ensure!(Tasks::<T>::contains_key(&task_id), Error::<T>::TaskNotExist);
-		    let task = Tasks::<T>::get(&task_id).unwrap();
+		    ensure!(Tasks::<T>::contains_key(&ref_num), Error::<T>::TaskNotExist);
+		    let task = Tasks::<T>::get(&ref_num).unwrap();
 
             // check if the task status is in precessing
 		    // check result signature
@@ -216,7 +217,7 @@ decl_module! {
 
             // task done
 
-            Self::deposit_event(RawEvent::CompleteTask(sender, task_id, result));
+            Self::deposit_event(RawEvent::CompleteTask(sender, ref_num, result));
 
 		    Ok(())
 		}
