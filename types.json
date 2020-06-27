@@ -3,6 +3,8 @@
   "Address": "AccountId",
   "TeaId": "Bytes",
   "PeerId": "Bytes",
+  "TaskId": "H256",
+  "Result": "Bytes",
   "Node": {
     "TeaId": "TeaId",
     "Peers": "Vec<PeerId>"

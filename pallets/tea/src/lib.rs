@@ -83,12 +83,14 @@ decl_event!(
 	where
 		AccountId = <T as system::Trait>::AccountId,
 		Balance = BalanceOf<T>,
+		TaskId = H256,
+		Result = Vec<u8>,
 	{
 		NewNodeJoined(AccountId, Node),
 		UpdateNodePeer(AccountId, Node),
 		NewModelAdded(AccountId),
-		NewTaskAdded(AccountId, Node, H256, Task<Balance>),
-		CompleteTask(AccountId, Task<Balance>, Balance),
+		NewTaskAdded(AccountId, Node, TaskId, Task<Balance>),
+		CompleteTask(AccountId, TaskId, Result),
 	}
 );
 
@@ -191,15 +193,30 @@ decl_module! {
             Self::deposit_event(RawEvent::NewTaskAdded(sender, node, task_id, new_task));
 		}
 
-		pub fn complete_task(origin, task_id: H256) -> dispatch::DispatchResult {
+		pub fn complete_task(
+		    origin,
+		    winner_tea_id: Vec<u8>,
+		    task_id: H256,
+		    delegate_sig: Vec<u8>,
+		    result: Vec<u8>,
+		    result_sig: Vec<u8>
+		    ) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
+
+		    // check if (sender, tea_id) exist
+		    // check the delegate signature
 
 		    ensure!(Tasks::<T>::contains_key(&task_id), Error::<T>::TaskNotExist);
 		    let task = Tasks::<T>::get(&task_id).unwrap();
 
-            let positive_imbalance = T::Currency::deposit_creating(&sender, task.payment.clone());
+            // check if the task status is in precessing
+		    // check result signature
 
-            Self::deposit_event(RawEvent::CompleteTask(sender, task, positive_imbalance.peek()));
+            let _positive_imbalance = T::Currency::deposit_creating(&sender, task.payment.clone());
+
+            // task done
+
+            Self::deposit_event(RawEvent::CompleteTask(sender, task_id, result));
 
 		    Ok(())
 		}
