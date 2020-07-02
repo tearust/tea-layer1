@@ -14,10 +14,10 @@ use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, decl_error, dispatch,
                     StorageMap, StorageValue, ensure,
                     traits::{Randomness, Currency, ExistenceRequirement, WithdrawReason, WithdrawReasons,
-                             OnUnbalanced, Imbalance}};
+                             Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
-use sp_core::{crypto, ed25519, sr25519, ecdsa, hash::{H256, H512}};
+use sp_core::{crypto, ed25519, hash::{H256}};
 use pallet_balances as balances;
 
 #[cfg(test)]
@@ -34,32 +34,31 @@ pub trait Trait: balances::Trait {
 }
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
-// type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::NegativeImbalance;
 
-type TeaId = Vec<u8>;
+// #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+// pub struct TeaId(pub [u8; 32]);
+
+type TeaId = [u8; 32];
+
 type PeerId = Vec<u8>;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Node {
     tea_id: TeaId,
     peers: Vec<PeerId>,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Model<AccountId> {
     account: AccountId,
     price: u32,
     cid: Vec<u8>,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Task<Balance> {
-    ref_num: Vec<u8>,
-    delegate_node: TeaId,
+    ref_num: H256,
+    delegate_tea_id: TeaId,
     model_cid: Vec<u8>,
     body_cid: Vec<u8>,
     payment: Balance,
@@ -71,11 +70,11 @@ decl_storage! {
 			Vec<Vec<u8>> = vec!["tea-node1".into(), "tea-node2".into()];
 
 		Nodes get(nodes):
-			map hasher(blake2_256) TeaId => Option<Node>;
+			map hasher(blake2_128_concat) TeaId => Option<Node>;
 		Models get(models):
-			map hasher(blake2_256) Vec<u8> => Model<T::AccountId>;
+			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
 		Tasks get(tasks):
-			map hasher(blake2_256) Vec<u8> => Option<Task<BalanceOf<T>>>;
+			map hasher(twox_128) H256 => Option<Task<BalanceOf<T>>>;
 	}
 }
 
@@ -83,7 +82,7 @@ decl_event!(
 	pub enum Event<T>
 	where
 		AccountId = <T as system::Trait>::AccountId,
-		RefNum = Vec<u8>,
+		RefNum = H256,
 		Result = Vec<u8>,
 	{
 		NewNodeJoined(AccountId, Node),
@@ -103,6 +102,8 @@ decl_error! {
 	    ModelNotExist,
 	    TaskNotExist,
 	    TaskCountOverflow,
+	    InvalidDelegateSig,
+	    InvalidResultSig,
 	}
 }
 
@@ -165,16 +166,16 @@ decl_module! {
 		}
 
 		pub fn add_new_task(origin,
-		    ref_num: Vec<u8>,
-		    delegate_node: TeaId,
+		    ref_num: H256,
+		    delegate_tea_id: TeaId,
 		    model_cid: Vec<u8>,
 		    body_cid: Vec<u8>,
 		    payment: BalanceOf<T>)
 		{
 			let sender = ensure_signed(origin)?;
 
-		    ensure!(Nodes::contains_key(&delegate_node), Error::<T>::NodeNotExist);
-		    let node = Nodes::get(&delegate_node).unwrap();
+		    ensure!(Nodes::contains_key(&delegate_tea_id), Error::<T>::NodeNotExist);
+		    let node = Nodes::get(&delegate_tea_id).unwrap();
 
             let neg_imbalance = T::Currency::withdraw(&sender,
 		        payment,
@@ -183,7 +184,7 @@ decl_module! {
 
             let new_task = Task {
                 ref_num: ref_num.clone(),
-                delegate_node,
+                delegate_tea_id,
                 model_cid,
                 body_cid,
                 payment: neg_imbalance.peek(),
@@ -196,8 +197,8 @@ decl_module! {
 
 		pub fn complete_task(
 		    origin,
-		    ref_num: Vec<u8>,
-		    winner_tea_id: Vec<u8>,
+		    ref_num: H256,
+		    winner_tea_id: TeaId,
 		    delegate_sig: Vec<u8>,
 		    result: Vec<u8>,
 		    result_sig: Vec<u8>
@@ -205,13 +206,18 @@ decl_module! {
 		    let sender = ensure_signed(origin)?;
 
 		    // check if (sender, tea_id) exist
-		    // check the delegate signature
 
+            // check if the task exist
 		    ensure!(Tasks::<T>::contains_key(&ref_num), Error::<T>::TaskNotExist);
 		    let task = Tasks::<T>::get(&ref_num).unwrap();
 
             // check if the task status is in precessing
+
+            // check the delegate signature
+            Self::verify_delegate_sig(task.delegate_tea_id, delegate_sig, winner_tea_id, ref_num)?;
+
 		    // check result signature
+		    Self::verify_result_sig(winner_tea_id, result_sig, &result)?;
 
             let _positive_imbalance = T::Currency::deposit_creating(&sender, task.payment.clone());
 
@@ -234,5 +240,31 @@ impl<T: Trait> Module<T> {
             <system::Module<T>>::block_number(),
         );
         payload.using_encoded(blake2_256).into()
+    }
+
+    fn verify_delegate_sig(delegate_tea_id: TeaId,
+                           delegate_sig: Vec<u8>,
+                           winner_tea_id: TeaId,
+                           ref_num: H256) -> dispatch::DispatchResult {
+        let delegate_tea_id = ed25519::Public(delegate_tea_id);
+        let delegate_sig = ed25519::Signature::from_slice(&delegate_sig[..]);
+        let auth_payload = [&winner_tea_id[..], &ref_num[..]].concat();
+
+        ensure!(sp_io::crypto::ed25519_verify(&delegate_sig, &auth_payload[..], &delegate_tea_id),
+                Error::<T>::InvalidDelegateSig);
+
+        Ok(())
+    }
+
+    fn verify_result_sig(winner_tea_id: TeaId,
+                         result_sig: Vec<u8>,
+                         result: &Vec<u8>) -> dispatch::DispatchResult {
+        let winner_tea_id = ed25519::Public(winner_tea_id);
+        let result_sig = ed25519::Signature::from_slice(&result_sig[..]);
+
+        ensure!(sp_io::crypto::ed25519_verify(&result_sig, &result[..], &winner_tea_id),
+                Error::<T>::InvalidResultSig);
+
+        Ok(())
     }
 }
