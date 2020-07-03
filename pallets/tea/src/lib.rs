@@ -82,13 +82,14 @@ decl_event!(
 	pub enum Event<T>
 	where
 		AccountId = <T as system::Trait>::AccountId,
+		Balance = BalanceOf<T>,
 		RefNum = H256,
 		Result = Vec<u8>,
 	{
 		NewNodeJoined(AccountId, Node),
 		UpdateNodePeer(AccountId, Node),
 		NewModelAdded(AccountId),
-		NewTaskAdded(AccountId, RefNum, Node),
+		NewTaskAdded(AccountId, Task<Balance>, Node),
 		CompleteTask(AccountId, RefNum, Result),
 	}
 );
@@ -192,7 +193,7 @@ decl_module! {
 
             Tasks::<T>::insert(&ref_num, &new_task);
 
-            Self::deposit_event(RawEvent::NewTaskAdded(sender, ref_num, node));
+            Self::deposit_event(RawEvent::NewTaskAdded(sender, new_task, node));
 		}
 
 		pub fn complete_task(
