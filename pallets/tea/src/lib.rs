@@ -35,17 +35,16 @@ pub trait Trait: balances::Trait {
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
-// #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-// pub struct TeaId(pub [u8; 32]);
+type TeaPubKey = [u8; 32];
 
-type TeaId = [u8; 32];
-
-type PeerId = Vec<u8>;
+type Url = Vec<u8>;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Node {
-    tea_id: TeaId,
-    peers: Vec<PeerId>,
+    tea_id: TeaPubKey,
+    ephemeral_id: TeaPubKey,
+    profile_cid: Vec<u8>,
+    urls: Vec<Url>,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -58,7 +57,7 @@ pub struct Model<AccountId> {
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Task<Balance> {
     ref_num: H256,
-    delegate_tea_id: TeaId,
+    delegate_tea_id: TeaPubKey,
     model_cid: Vec<u8>,
     body_cid: Vec<u8>,
     payment: Balance,
@@ -69,23 +68,25 @@ decl_storage! {
 		BootNodes get(fn bootnodes):
 			Vec<Vec<u8>> = vec!["tea-node1".into(), "tea-node2".into()];
 
-		Nodes get(fn nodes):
-			map hasher(blake2_128_concat) TeaId => Option<Node>;
-		Models get(fn models):
+		Nodes get(nodes):
+			map hasher(blake2_128_concat) TeaPubKey => Option<Node>;
+		Models get(models):
 			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
 		Tasks get(fn tasks):
 			map hasher(twox_128) H256 => Option<Task<BalanceOf<T>>>;
 	}
 
 	add_extra_genesis {
-	    config(tpms): Vec<(TeaId, TeaId)>;
+	    config(tpms): Vec<(TeaPubKey, TeaPubKey)>;
 		build(|config: &GenesisConfig| {
-			for (tpm_id, _tea_id) in config.tpms.iter() {
+			for (tea_id, ephemeral_id) in config.tpms.iter() {
 				let node = Node {
-				    tea_id: tpm_id.clone(),
-				    peers: Vec::new(),
+				    tea_id: tea_id.clone(),
+				    ephemeral_id: *ephemeral_id,
+				    profile_cid: Vec::new(),
+				    urls: Vec::new(),
 				};
-				Nodes::insert(tpm_id, node);
+				Nodes::insert(tea_id, node);
 			}
 		})
 	}
@@ -117,7 +118,8 @@ decl_error! {
 	    TaskNotExist,
 	    TaskCountOverflow,
 	    InvalidDelegateSig,
-	    InvalidResultSig,
+	    InvalidExecutorSig,
+	    InvalidTpmSig,
 	}
 }
 
@@ -134,14 +136,16 @@ decl_module! {
 		// this is needed only if you are using events in your pallet
 		fn deposit_event() = default;
 
-		pub fn add_new_node(origin, tea_id: TeaId) -> dispatch::DispatchResult {
+		pub fn add_new_node(origin, tea_id: TeaPubKey) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 
 		    ensure!(!Nodes::contains_key(&tea_id), Error::<T>::NodeAlreadyExist);
 
             let new_node = Node {
-            	tea_id: tea_id.clone(),
-            	peers: Vec::new(),
+                tea_id: tea_id.clone(),
+            	ephemeral_id: [0u8; 32],
+            	profile_cid: Vec::new(),
+            	urls: Vec::new(),
             };
             <Nodes>::insert(tea_id, &new_node);
             Self::deposit_event(RawEvent::NewNodeJoined(sender, new_node));
@@ -149,13 +153,22 @@ decl_module! {
             Ok(())
 		}
 
-		pub fn update_peer_id(origin, tea_id: TeaId, peers: Vec<PeerId>) -> dispatch::DispatchResult {
+		pub fn update_node(origin,
+		    tea_id: TeaPubKey,
+		    ephemeral_id: TeaPubKey,
+		    profile_cid: Vec<u8>,
+		    urls: Vec<Vec<u8>>,
+		    tea_sig: Vec<u8>) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
 
+		    // Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
+
 			let mut node = Nodes::get(&tea_id).unwrap();
-        	node.peers = peers;
+        	node.ephemeral_id = ephemeral_id;
+        	node.profile_cid = profile_cid;
+        	node.urls = urls;
 	        <Nodes>::insert(tea_id, &node);
 
             Self::deposit_event(RawEvent::UpdateNodePeer(sender, node));
@@ -181,7 +194,7 @@ decl_module! {
 
 		pub fn add_new_task(origin,
 		    ref_num: H256,
-		    delegate_tea_id: TeaId,
+		    delegate_tea_id: TeaPubKey,
 		    model_cid: Vec<u8>,
 		    body_cid: Vec<u8>,
 		    payment: BalanceOf<T>)
@@ -212,14 +225,14 @@ decl_module! {
 		pub fn complete_task(
 		    origin,
 		    ref_num: H256,
-		    winner_tea_id: TeaId,
+		    winner_tea_id: TeaPubKey,
 		    delegate_sig: Vec<u8>,
 		    result: Vec<u8>,
 		    result_sig: Vec<u8>
 		    ) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 
-		    // check if (sender, tea_id) exist
+		    // check if (sender, ephemeral_id) exist
 
             // check if the task exist
 		    ensure!(Tasks::<T>::contains_key(&ref_num), Error::<T>::TaskNotExist);
@@ -256,9 +269,21 @@ impl<T: Trait> Module<T> {
         payload.using_encoded(blake2_256).into()
     }
 
-    fn verify_delegate_sig(delegate_tea_id: TeaId,
+    fn verify_tea_sig(tea_id: TeaPubKey,
+                         tea_sig: Vec<u8>,
+                         ephemeral_id: TeaPubKey) -> dispatch::DispatchResult {
+        let tea_id = ed25519::Public(tea_id);
+        let tea_sig = ed25519::Signature::from_slice(&tea_sig[..]);
+
+        ensure!(sp_io::crypto::ed25519_verify(&tea_sig, &ephemeral_id[..], &tea_id),
+                Error::<T>::InvalidTpmSig);
+
+        Ok(())
+    }
+
+    fn verify_delegate_sig(delegate_tea_id: TeaPubKey,
                            delegate_sig: Vec<u8>,
-                           winner_tea_id: TeaId,
+                           winner_tea_id: TeaPubKey,
                            ref_num: H256) -> dispatch::DispatchResult {
         let delegate_tea_id = ed25519::Public(delegate_tea_id);
         let delegate_sig = ed25519::Signature::from_slice(&delegate_sig[..]);
@@ -270,14 +295,14 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn verify_result_sig(winner_tea_id: TeaId,
-                         result_sig: Vec<u8>,
+    fn verify_result_sig(executor_tea_id: TeaPubKey,
+                         executor_sig: Vec<u8>,
                          result: &Vec<u8>) -> dispatch::DispatchResult {
-        let winner_tea_id = ed25519::Public(winner_tea_id);
-        let result_sig = ed25519::Signature::from_slice(&result_sig[..]);
+        let executor_tea_id = ed25519::Public(executor_tea_id);
+        let executor_sig = ed25519::Signature::from_slice(&executor_sig[..]);
 
-        ensure!(sp_io::crypto::ed25519_verify(&result_sig, &result[..], &winner_tea_id),
-                Error::<T>::InvalidResultSig);
+        ensure!(sp_io::crypto::ed25519_verify(&executor_sig, &result[..], &executor_tea_id),
+                Error::<T>::InvalidExecutorSig);
 
         Ok(())
     }
