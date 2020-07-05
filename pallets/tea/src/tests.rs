@@ -67,3 +67,17 @@ fn test_vector_by_string_should_work() {
 	assert!(&pair.sign(&message[..]) == &signature);
 	assert!(ed25519::Pair::verify(&signature, &message[..], &public));
 }
+
+#[test]
+fn test_delegate_sig_should_work() {
+	let public = ed25519::Public(hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a44"));
+	let message = hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a441d2905c84be11c0f314792f365e8385270495ebd112dc6363d3f02ec7ccfe475");
+	let signature = hex!("26bcb7e99923c877cb6d50afedaf0fca0af4f3c78b437e8c48c7107f9ebdd1a00aa482e67ca244a40f44cf295d1b9f5c416202a5b785401408d8cffad0f18302");
+	let signature = ed25519::Signature::from_raw(signature);
+	assert!(ed25519::Pair::verify(&signature, &message[..], &public));
+}
+
+#[test]
+fn test_auth_payload_should_right() {
+
+}

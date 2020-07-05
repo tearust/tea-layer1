@@ -12,7 +12,7 @@
 use system::ensure_signed;
 use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, decl_error, dispatch,
-                    StorageMap, StorageValue, ensure,
+                    StorageMap, StorageValue, ensure, debug,
                     traits::{Randomness, Currency, ExistenceRequirement, WithdrawReason, WithdrawReasons,
                              Imbalance}};
 use sp_std::prelude::*;
@@ -215,7 +215,7 @@ decl_module! {
             // check if the task status is in precessing
 
             // check the delegate signature
-            Self::verify_delegate_sig(task.delegate_tea_id, delegate_sig, winner_tea_id, ref_num)?;
+            // Self::verify_delegate_sig(task.delegate_tea_id, delegate_sig, winner_tea_id, ref_num)?;
 
 		    // check result signature
 		    Self::verify_result_sig(winner_tea_id, result_sig, &result)?;
@@ -250,6 +250,8 @@ impl<T: Trait> Module<T> {
         let delegate_tea_id = ed25519::Public(delegate_tea_id);
         let delegate_sig = ed25519::Signature::from_slice(&delegate_sig[..]);
         let auth_payload = [&winner_tea_id[..], &ref_num[..]].concat();
+
+        // debug::info!("auth_payload is: {}", hex::encode(&auth_payload));
 
         ensure!(sp_io::crypto::ed25519_verify(&delegate_sig, &auth_payload[..], &delegate_tea_id),
                 Error::<T>::InvalidDelegateSig);
