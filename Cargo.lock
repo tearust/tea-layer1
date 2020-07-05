@@ -5358,6 +5358,7 @@ version = "2.0.0-alpha.3"
 dependencies = [
  "futures 0.3.4",
  "hex",
+ "hex-literal",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",

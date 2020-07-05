@@ -66,15 +66,28 @@ pub struct Task<Balance> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
-		BootNodes get(bootnodes):
+		BootNodes get(fn bootnodes):
 			Vec<Vec<u8>> = vec!["tea-node1".into(), "tea-node2".into()];
 
-		Nodes get(nodes):
+		Nodes get(fn nodes):
 			map hasher(blake2_128_concat) TeaId => Option<Node>;
-		Models get(models):
+		Models get(fn models):
 			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
-		Tasks get(tasks):
+		Tasks get(fn tasks):
 			map hasher(twox_128) H256 => Option<Task<BalanceOf<T>>>;
+	}
+
+	add_extra_genesis {
+	    config(tpms): Vec<(TeaId, TeaId)>;
+		build(|config: &GenesisConfig| {
+			for (tpm_id, _tea_id) in config.tpms.iter() {
+				let node = Node {
+				    tea_id: tpm_id.clone(),
+				    peers: Vec::new(),
+				};
+				Nodes::insert(tpm_id, node);
+			}
+		})
 	}
 }
 
