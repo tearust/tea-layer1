@@ -4,10 +4,10 @@ use crate::{Error, mock::*};
 use frame_support::{assert_ok, assert_noop};
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
-use hex::FromHex;
 use std::vec::Vec;
 use sp_core::{crypto, ed25519, hash::{H256, H512}, Pair};
 use hex_literal::hex;
+use hex as hex_o;
 
 #[test]
 fn it_works_for_default_value() {
@@ -69,7 +69,7 @@ fn test_vector_by_string_should_work() {
 }
 
 #[test]
-fn test_delegate_sig_should_work() {
+fn test_ed25519_sig_should_work() {
 	let public = ed25519::Public(hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a44"));
 	let message = hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a441d2905c84be11c0f314792f365e8385270495ebd112dc6363d3f02ec7ccfe475");
 	let signature = hex!("26bcb7e99923c877cb6d50afedaf0fca0af4f3c78b437e8c48c7107f9ebdd1a00aa482e67ca244a40f44cf295d1b9f5c416202a5b785401408d8cffad0f18302");
@@ -79,5 +79,24 @@ fn test_delegate_sig_should_work() {
 
 #[test]
 fn test_auth_payload_should_right() {
+	let winner_tea_id = hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a44");
+	let ref_num = hex!("0c6123c17c95bd6617a01ef899f5895ddb190eb3265f341687f4c0ad1b1f366f");
 
+	let auth_payload = [&winner_tea_id[..], &ref_num[..]].concat();
+
+	assert_eq!(hex_o::encode(auth_payload), "e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a440c6123c17c95bd6617a01ef899f5895ddb190eb3265f341687f4c0ad1b1f366f");
+}
+
+#[test]
+fn test_delegate_sig_should_work() {
+	let winner_tea_id = hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a44");
+	let ref_num = hex!("ba9147ba50faca694452db7c458e33a9a0322acbaac24bf35db7bb5165dff3ac");
+
+	let auth_payload = [&winner_tea_id[..], &ref_num[..]].concat();
+
+	let public = ed25519::Public(hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a44"));
+
+	let signature = hex!("4f62e775a61ac904d6cfc18473203761b77ef60255c745ea71255606956596f0511ca61d1b2cd039d789f01a98f1d746bb6dc58feb07f945cc4c053050ab0103");
+	let signature = ed25519::Signature::from_raw(signature);
+	assert!(ed25519::Pair::verify(&signature, &auth_payload[..], &public));
 }

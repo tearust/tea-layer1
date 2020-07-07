@@ -10,7 +10,6 @@ version = '2.0.0-alpha.3'
 
 [dependencies]
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
-hex = "0.4.0"
 
 [dependencies.codec]
 default-features = false
