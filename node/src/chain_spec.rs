@@ -144,10 +144,13 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 		tea: Some(TeaConfig {
 			tpms: vec![
 				(hex!("df38cb4f12479041c8e8d238109ef2a150b017f382206e24fee932e637c2db7b"),
-				 hex!("c7e016fad0796bb68594e49a6ef1942cf7e73497e69edb32d19ba2fab3696596")),
-
+				 [0u8; 32]),
+				(hex!("c7e016fad0796bb68594e49a6ef1942cf7e73497e69edb32d19ba2fab3696596"),
+				 [0u8; 32]),
 				(hex!("2754d7e9c73ced5b302e12464594110850980027f8f83c469e8145eef59220b6"),
-				 hex!("c9380fde1ba795fc656ab08ab4ef4482cf554790fd3abcd4642418ae8fb5fd52")),
+				 [0u8; 32]),
+				(hex!("c9380fde1ba795fc656ab08ab4ef4482cf554790fd3abcd4642418ae8fb5fd52"),
+				 [0u8; 32])
 			],
 		}),
 	}

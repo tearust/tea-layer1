@@ -65,9 +65,6 @@ pub struct Task<Balance> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
-		BootNodes get(fn bootnodes):
-			Vec<Vec<u8>> = vec!["tea-node1".into(), "tea-node2".into()];
-
 		Nodes get(nodes):
 			map hasher(blake2_128_concat) TeaPubKey => Option<Node>;
 		Models get(models):
@@ -153,7 +150,7 @@ decl_module! {
             Ok(())
 		}
 
-		pub fn update_node(origin,
+		pub fn update_node_profile(origin,
 		    tea_id: TeaPubKey,
 		    ephemeral_id: TeaPubKey,
 		    profile_cid: Vec<u8>,
