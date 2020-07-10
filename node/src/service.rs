@@ -74,6 +74,7 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 	let force_authoring = config.force_authoring;
 	let name = config.name.clone();
 	let disable_grandpa = config.disable_grandpa;
+	type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 
 	// sentry nodes announce themselves as authorities to the network
 	// and should run the same protocols authorities do, but it should
@@ -90,6 +91,12 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 		.with_finality_proof_provider(|client, backend|
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
 		)?
+		.with_rpc_extensions(|builder,| -> Result<RpcExtension, _>{
+			let mut io = jsonrpc_core::IoHandler::default();
+			// Use the fully qualified name starting from `crate` because we're in macro_rules!
+			io.extend_with(crate::jsonrpc::TeaNodeApi::to_delegate(crate::jsonrpc::TeaNode::new(builder.client().clone())));
+			Ok(io)
+		})?
 		.build()?;
 
 	if participates_in_consensus {
@@ -107,7 +114,7 @@ pub fn new_full(config: Configuration<GenesisConfig>)
 
 		let aura = sc_consensus_aura::start_aura::<_, _, _, _, _, AuraPair, _, _, _>(
 			sc_consensus_aura::slot_duration(&*client)?,
-			client,
+			client.clone(),
 			select_chain,
 			block_import,
 			proposer,

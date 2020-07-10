@@ -26,6 +26,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod api;
+
 /// The pallet's configuration trait.
 pub trait Trait: balances::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -35,11 +37,12 @@ pub trait Trait: balances::Trait {
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
-type TeaPubKey = [u8; 32];
+pub type TeaPubKey = [u8; 32];
 
 type Url = Vec<u8>;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct Node {
     tea_id: TeaPubKey,
     ephemeral_id: TeaPubKey,
@@ -302,5 +305,14 @@ impl<T: Trait> Module<T> {
                 Error::<T>::InvalidExecutorSig);
 
         Ok(())
+    }
+
+    // JSON-RPC implementation.
+    pub fn get_sum() -> u32 {
+        100 + 200
+    }
+
+    pub fn get_node(key: TeaPubKey) -> Option<Node> {
+        return Self::nodes(key)
     }
 }
