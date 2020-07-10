@@ -98,7 +98,7 @@ decl_event!(
 		Result = Vec<u8>,
 	{
 		NewNodeJoined(AccountId, Node),
-		UpdateNodePeer(AccountId, Node),
+		UpdateNodeProfile(AccountId, Node),
 		NewModelAdded(AccountId),
 		NewTaskAdded(AccountId, Task<Balance>),
 		CompleteTask(AccountId, RefNum, Result),
@@ -168,7 +168,7 @@ decl_module! {
         	node.urls = urls;
 	        <Nodes>::insert(tea_id, &node);
 
-            Self::deposit_event(RawEvent::UpdateNodePeer(sender, node));
+            Self::deposit_event(RawEvent::UpdateNodeProfile(sender, node));
 
             Ok(())
 		}
