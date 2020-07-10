@@ -100,7 +100,7 @@ decl_event!(
 		NewNodeJoined(AccountId, Node),
 		UpdateNodePeer(AccountId, Node),
 		NewModelAdded(AccountId),
-		NewTaskAdded(AccountId, Task<Balance>, Node),
+		NewTaskAdded(AccountId, Task<Balance>),
 		CompleteTask(AccountId, RefNum, Result),
 	}
 );
@@ -198,8 +198,8 @@ decl_module! {
 		{
 			let sender = ensure_signed(origin)?;
 
-		    ensure!(Nodes::contains_key(&delegate_tea_id), Error::<T>::NodeNotExist);
-		    let node = Nodes::get(&delegate_tea_id).unwrap();
+		    // ensure!(Nodes::contains_key(&delegate_tea_id), Error::<T>::NodeNotExist);
+		    // let node = Nodes::get(&delegate_tea_id).unwrap();
 
             let neg_imbalance = T::Currency::withdraw(&sender,
 		        payment,
@@ -216,7 +216,7 @@ decl_module! {
 
             Tasks::<T>::insert(&ref_num, &new_task);
 
-            Self::deposit_event(RawEvent::NewTaskAdded(sender, new_task, node));
+            Self::deposit_event(RawEvent::NewTaskAdded(sender, new_task));
 		}
 
 		pub fn complete_task(
