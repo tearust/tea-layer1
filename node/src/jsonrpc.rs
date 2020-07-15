@@ -23,7 +23,7 @@ pub trait TeaNodeApi<BlockHash> {
     #[rpc(name = "tea_getNode")]
     fn get_node(
         &self,
-        key: TeaPubKey,
+        key_hex: String,
         at: Option<BlockHash>,
     ) -> Result<Option<tea_runtime::tea::Node>>;
 }
@@ -69,7 +69,7 @@ impl<C, Block> TeaNodeApi<<Block as BlockT>::Hash> for TeaNode<C, Block>
 
     fn get_node(
         &self,
-        key: TeaPubKey,
+        key_hex: String,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<tea_runtime::tea::Node>> {
         let api = self.client.runtime_api();
@@ -78,7 +78,16 @@ impl<C, Block> TeaNodeApi<<Block as BlockT>::Hash> for TeaNode<C, Block>
             self.client.info().best_hash
         ));
 
-        let runtime_api_result = api.get_node(&at, key);
+        let key = Vec::from_hex(key_hex).map_err(|e| RpcError{
+            code: ErrorCode::ServerError(9875), // No real reason for this value
+            message: "Invalid key hex string.".into(),
+            data: Some(format!("{:?}", e).into()),
+        })?;
+
+        let mut k = [0u8; 32];
+        k.copy_from_slice(key.as_slice());
+
+        let runtime_api_result = api.get_node(&at, k);
         runtime_api_result.map_err(|e| RpcError {
             code: ErrorCode::ServerError(9876), // No real reason for this value
             message: "Get node info failed.".into(),

@@ -68,9 +68,9 @@ pub struct Task<Balance> {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
-		Nodes get(nodes):
+		Nodes get(fn nodes):
 			map hasher(blake2_128_concat) TeaPubKey => Option<Node>;
-		Models get(models):
+		Models get(fn models):
 			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
 		Tasks get(fn tasks):
 			map hasher(twox_128) H256 => Option<Task<BalanceOf<T>>>;
@@ -313,6 +313,9 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn get_node(key: TeaPubKey) -> Option<Node> {
-        return Self::nodes(key)
+        let r = Self::nodes(key);
+        debug::info!("get_node(): {:?}", r);
+
+        return r
     }
 }
