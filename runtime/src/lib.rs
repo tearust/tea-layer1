@@ -285,8 +285,8 @@ impl_runtime_apis! {
 		fn get_sum() -> u32 {
             Tea::get_sum()
         }
-        fn get_node(key: tea::TeaPubKey) -> Option<tea::Node> {
-        	Tea::get_node(key)
+        fn get_node_by_ephemeral_id(id: tea::TeaPubKey) -> Option<tea::Node> {
+        	Tea::get_node_by_ephemeral_id(id)
         }
 	}
 

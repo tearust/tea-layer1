@@ -70,6 +70,10 @@ decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
 		Nodes get(fn nodes):
 			map hasher(blake2_128_concat) TeaPubKey => Option<Node>;
+
+		EphemeralIds get(fn ephemera_ids):
+		    map hasher(blake2_128_concat) TeaPubKey => Option<TeaPubKey>;
+
 		Models get(fn models):
 			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
 		Tasks get(fn tasks):
@@ -166,9 +170,12 @@ decl_module! {
 		    // Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
 
 			let mut node = Nodes::get(&tea_id).unwrap();
-        	node.ephemeral_id = ephemeral_id;
+        	node.ephemeral_id = ephemeral_id.clone();
         	node.profile_cid = profile_cid;
         	node.urls = urls;
+
+		    EphemeralIds::remove(&node.ephemeral_id);
+	        EphemeralIds::insert(ephemeral_id, tea_id.clone());
 	        <Nodes>::insert(tea_id, &node);
 
             Self::deposit_event(RawEvent::UpdateNodeProfile(sender, node));
@@ -312,10 +319,16 @@ impl<T: Trait> Module<T> {
         100 + 200
     }
 
-    pub fn get_node(key: TeaPubKey) -> Option<Node> {
-        let r = Self::nodes(key);
-        debug::info!("get_node(): {:?}", r);
+    pub fn get_node_by_ephemeral_id(ephemeral_id: TeaPubKey) -> Option<Node> {
+        let tea_id = Self::ephemera_ids(ephemeral_id);
+        debug::info!("get_node_by_ephemeral_id(): {:?}", tea_id);
 
-        return r
+        return match tea_id {
+            Some(id) => {
+                let node = Self::nodes(tea_id.unwrap());
+                node
+            },
+            None => None
+        }
     }
 }

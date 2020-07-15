@@ -20,10 +20,10 @@ pub trait TeaNodeApi<BlockHash> {
         at: Option<BlockHash>,
     ) -> Result<u32>;
 
-    #[rpc(name = "tea_getNode")]
-    fn get_node(
+    #[rpc(name = "tea_getNodeByEphemeralId")]
+    fn get_node_by_ephemeral_id(
         &self,
-        key_hex: String,
+        id_hex: String,
         at: Option<BlockHash>,
     ) -> Result<Option<tea_runtime::tea::Node>>;
 }
@@ -67,9 +67,9 @@ impl<C, Block> TeaNodeApi<<Block as BlockT>::Hash> for TeaNode<C, Block>
         })
     }
 
-    fn get_node(
+    fn get_node_by_ephemeral_id(
         &self,
-        key_hex: String,
+        id_hex: String,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<tea_runtime::tea::Node>> {
         let api = self.client.runtime_api();
@@ -78,7 +78,7 @@ impl<C, Block> TeaNodeApi<<Block as BlockT>::Hash> for TeaNode<C, Block>
             self.client.info().best_hash
         ));
 
-        let key = Vec::from_hex(key_hex).map_err(|e| RpcError{
+        let key = Vec::from_hex(id_hex).map_err(|e| RpcError{
             code: ErrorCode::ServerError(9875), // No real reason for this value
             message: "Invalid key hex string.".into(),
             data: Some(format!("{:?}", e).into()),
@@ -87,7 +87,7 @@ impl<C, Block> TeaNodeApi<<Block as BlockT>::Hash> for TeaNode<C, Block>
         let mut k = [0u8; 32];
         k.copy_from_slice(key.as_slice());
 
-        let runtime_api_result = api.get_node(&at, k);
+        let runtime_api_result = api.get_node_by_ephemeral_id(&at, k);
         runtime_api_result.map_err(|e| RpcError {
             code: ErrorCode::ServerError(9876), // No real reason for this value
             message: "Get node info failed.".into(),
