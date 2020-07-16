@@ -1,12 +1,14 @@
 use sp_core::{Pair, Public, sr25519};
-use node_template_runtime::{
+use tea_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature
+	SudoConfig, SystemConfig, TeaConfig, WASM_BINARY, Signature
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{Verify, IdentifyAccount};
 use sc_service::ChainType;
+use sp_core::H256;
+use hex_literal::hex;
 
 // Note this is the URL for the telemetry server
 //const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -119,6 +121,18 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 		}),
 		sudo: Some(SudoConfig {
 			key: root_key,
+		}),
+		tea: Some(TeaConfig {
+			tpms: vec![
+				(hex!("df38cb4f12479041c8e8d238109ef2a150b017f382206e24fee932e637c2db7b"),
+				 [0u8; 32]),
+				(hex!("c7e016fad0796bb68594e49a6ef1942cf7e73497e69edb32d19ba2fab3696596"),
+				 [0u8; 32]),
+				(hex!("2754d7e9c73ced5b302e12464594110850980027f8f83c469e8145eef59220b6"),
+				 [0u8; 32]),
+				(hex!("c9380fde1ba795fc656ab08ab4ef4482cf554790fd3abcd4642418ae8fb5fd52"),
+				 [0u8; 32])
+			],
 		}),
 	}
 }

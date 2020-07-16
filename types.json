@@ -1,18 +1,25 @@
 {
   "Address": "AccountId",
+  "TeaPubKey": "[u8; 32]",
+  "Url": "Bytes",
+  "RefNum": "H256",
+  "Result": "Bytes",
   "Node": {
-    "account": "AccountId",
-    "amt": "Balance"
+    "teaId": "TeaPubKey",
+    "ephemeralId": "TeaPubKey",
+    "profileCid": "Bytes",
+    "urls": "Vec<Url>"
   },
   "Model": {
     "account": "AccountId",
     "payment": "u32",
-    "cid": "H256"
+    "cid": "Bytes"
   },
   "Task": {
-    "account": "H256",
-    "amt": "Balance",
-    "model_id": "Hash",
-    "cid": "Hash"
+    "refNum": "RefNum",
+    "delegateTeaId": "TeaPubKey",
+    "modelCid": "Bytes",
+    "bodyCid": "Bytes",
+    "payment": "Balance"
   }
 }

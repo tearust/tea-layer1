@@ -40,6 +40,9 @@ pub use frame_support::{
 	},
 };
 
+/// Importing a tea pallet
+pub use tea;
+
 /// Importing a template pallet
 pub use template;
 
@@ -95,8 +98,8 @@ pub mod opaque {
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("node-template"),
-	impl_name: create_runtime_str!("node-template"),
+	spec_name: create_runtime_str!("tea-layer1"),
+	impl_name: create_runtime_str!("tea-layer1"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 1,
@@ -259,6 +262,11 @@ impl template::Trait for Runtime {
 	type Event = Event;
 }
 
+impl tea::Trait for Runtime {
+	type Event = Event;
+	type Currency = balances::Module<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -275,6 +283,7 @@ construct_runtime!(
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		// Used for the module template in `./template.rs`
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
+		Tea: tea::{Module, Call, Storage, Event<T>, Config},
 	}
 );
 
@@ -306,6 +315,15 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive = frame_executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
 
 impl_runtime_apis! {
+	impl tea::api::TeaApi<Block> for Runtime {
+		fn get_sum() -> u32 {
+            Tea::get_sum()
+        }
+        fn get_node_by_ephemeral_id(id: tea::TeaPubKey) -> Option<tea::Node> {
+        	Tea::get_node_by_ephemeral_id(id)
+        }
+	}
+
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
 			VERSION

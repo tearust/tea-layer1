@@ -1,26 +1,32 @@
 [package]
-authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+authors = ['Yang Zhou']
 build = 'build.rs'
-description = 'Substrate Node template'
+description = 'tea layer1 node'
 edition = '2018'
-homepage = 'https://substrate.dev'
+homepage = 'https://github.com/tearust'
 license = 'Unlicense'
-name = 'node-template'
-repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
+
+name = 'tea-layer1'
+repository = 'https://github.com/tearust/tea-layer1'
 version = '2.0.0-rc4'
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
 [[bin]]
-name = 'node-template'
+name = 'tea-layer1'
 
 [dependencies]
 futures = '0.3.4'
 log = '0.4.8'
 parking_lot = '0.10.0'
 structopt = '0.3.8'
+jsonrpc-core = "14.0.3"
+jsonrpc-core-client = "14.0.3"
+jsonrpc-derive = "14.0.3"
+hex = "0.4.0"
+hex-literal = "0.2.1"
 
-[dependencies.node-template-runtime]
+[dependencies.tea-runtime]
 path = '../runtime'
 version = '2.0.0-rc4'
 
@@ -73,6 +79,23 @@ tag = 'v2.0.0-rc4'
 version = '0.8.0-rc4'
 
 [dependencies.sc-transaction-pool]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.sc-rpc]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.sp-blockchain]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.sp-api]
+default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
-use node_template_runtime::{self, opaque::Block, RuntimeApi};
+use tea_runtime::{self, opaque::Block, RuntimeApi};
 use sc_service::{error::{Error as ServiceError}, AbstractService, Configuration, ServiceBuilder};
 use sp_inherents::InherentDataProviders;
 use sc_executor::native_executor_instance;
@@ -17,8 +17,8 @@ use sc_finality_grandpa::{
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
-	node_template_runtime::api::dispatch,
-	node_template_runtime::native_version,
+	tea_runtime::api::dispatch,
+	tea_runtime::native_version,
 );
 
 /// Starts a `ServiceBuilder` for a full service.
@@ -34,8 +34,8 @@ macro_rules! new_full_start {
 		let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
 		let builder = sc_service::ServiceBuilder::new_full::<
-			node_template_runtime::opaque::Block,
-			node_template_runtime::RuntimeApi,
+			tea_runtime::opaque::Block,
+			tea_runtime::RuntimeApi,
 			crate::service::Executor
 		>($config)?
 			.with_select_chain(|_config, backend| {
@@ -98,6 +98,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 	let force_authoring = config.force_authoring;
 	let name = config.network.node_name.clone();
 	let disable_grandpa = config.disable_grandpa;
+	type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 
 	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
 
@@ -110,6 +111,12 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 			// GenesisAuthoritySetProvider is implemented for StorageAndProofProvider
 			let provider = client as Arc<dyn StorageAndProofProvider<_, _>>;
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
+		})?
+		.with_rpc_extensions(|builder,| -> Result<RpcExtension, _>{
+			let mut io = jsonrpc_core::IoHandler::default();
+			// Use the fully qualified name starting from `crate` because we're in macro_rules!
+			io.extend_with(crate::jsonrpc::TeaNodeApi::to_delegate(crate::jsonrpc::TeaNode::new(builder.client().clone())));
+			Ok(io)
 		})?
 		.build_full()?;
 
@@ -129,7 +136,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 
 		let aura = sc_consensus_aura::start_aura::<_, _, _, _, _, AuraPair, _, _, _>(
 			sc_consensus_aura::slot_duration(&*client)?,
-			client,
+			client.clone(),
 			select_chain,
 			block_import,
 			proposer,
