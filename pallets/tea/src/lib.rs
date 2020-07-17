@@ -9,6 +9,9 @@
 /// For more guidance on Substrate FRAME, see the example pallet
 /// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 use system::ensure_signed;
 use codec::{Decode, Encode};
 use frame_support::{decl_event, decl_module, decl_storage, decl_error, dispatch,
@@ -42,7 +45,9 @@ pub type TeaPubKey = [u8; 32];
 type Url = Vec<u8>;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "std", serde(deny_unknown_fields))]
 pub struct Node {
     tea_id: TeaPubKey,
     ephemeral_id: TeaPubKey,
