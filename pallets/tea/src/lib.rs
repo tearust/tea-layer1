@@ -128,7 +128,7 @@ decl_error! {
 	    TaskCountOverflow,
 	    InvalidDelegateSig,
 	    InvalidExecutorSig,
-	    InvalidTpmSig,
+	    InvalidTeaSig,
 	}
 }
 
@@ -174,7 +174,7 @@ decl_module! {
 
 		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
 
-		    // Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
+		    Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
 
 			let mut node = Nodes::get(&tea_id).unwrap();
         	node.ephemeral_id = ephemeral_id.clone();
@@ -293,7 +293,7 @@ impl<T: Trait> Module<T> {
         let tea_sig = ed25519::Signature::from_slice(&tea_sig[..]);
 
         ensure!(sp_io::crypto::ed25519_verify(&tea_sig, &ephemeral_id[..], &tea_id),
-                Error::<T>::InvalidTpmSig);
+                Error::<T>::InvalidTeaSig);
 
         Ok(())
     }
