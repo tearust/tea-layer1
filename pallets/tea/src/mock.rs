@@ -8,6 +8,7 @@ use sp_runtime::{
 };
 use pallet_balances;
 use system;
+use frame_support::weights::RuntimeDbWeight;
 
 impl_outer_origin! {
 	pub enum Origin for Test {}
@@ -26,6 +27,7 @@ parameter_types! {
 }
 
 impl system::Trait for Test {
+	type BaseCallFilter = ();
 	type Origin = Origin;
 	type Call = ();
 	type Index = u64;
@@ -38,6 +40,10 @@ impl system::Trait for Test {
 	type Event = ();
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
+	type DbWeight = ();
+	type BlockExecutionWeight = ();
+	type ExtrinsicBaseWeight = ();
+	type MaximumExtrinsicWeight = MaximumBlockWeight;
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();

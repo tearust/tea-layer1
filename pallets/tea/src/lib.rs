@@ -74,10 +74,13 @@ pub struct Task<Balance> {
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
 		Nodes get(fn nodes):
-			map hasher(blake2_128_concat) TeaPubKey => Option<Node>;
+			map hasher(twox_64_concat) TeaPubKey => Option<Node>;
+
+		BootstrapNodes get(fn bootstrap_nodes):
+			map hasher(twox_64_concat) TeaPubKey => Option<Node>;
 
 		EphemeralIds get(fn ephemera_ids):
-		    map hasher(blake2_128_concat) TeaPubKey => Option<TeaPubKey>;
+		    map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
 
 		Models get(fn models):
 			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
@@ -172,18 +175,27 @@ decl_module! {
 		    tea_sig: Vec<u8>) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
-
+		    ensure!(Nodes::contains_key(&tea_id) || BootstrapNodes::contains_key(&tea_id),
+		        Error::<T>::NodeNotExist);
 		    Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
 
-			let mut node = Nodes::get(&tea_id).unwrap();
-        	node.ephemeral_id = ephemeral_id.clone();
-        	node.profile_cid = profile_cid;
-        	node.urls = urls;
+		    let urls_count = urls.len();
+            let node = Node {
+                tea_id: tea_id.clone(),
+            	ephemeral_id,
+            	profile_cid,
+            	urls,
+            };
+            if urls_count > 0 {
+                <Nodes>::insert(&tea_id, &node);
+                <BootstrapNodes>::remove(&tea_id);
+            } else {
+	            <BootstrapNodes>::insert(&tea_id, &node);
+                <Nodes>::remove(&tea_id);
+            }
 
 		    EphemeralIds::remove(&node.ephemeral_id);
-	        EphemeralIds::insert(ephemeral_id, tea_id.clone());
-	        <Nodes>::insert(tea_id, &node);
+	        EphemeralIds::insert(ephemeral_id, tea_id);
 
             Self::deposit_event(RawEvent::UpdateNodeProfile(sender, node));
 
@@ -290,8 +302,9 @@ impl<T: Trait> Module<T> {
                          tea_sig: Vec<u8>,
                          ephemeral_id: TeaPubKey) -> dispatch::DispatchResult {
         let tea_id = ed25519::Public(tea_id);
-        let tea_sig = ed25519::Signature::from_slice(&tea_sig[..]);
+        ensure!(tea_sig.len() == 64, Error::<T>::InvalidTeaSig);
 
+        let tea_sig = ed25519::Signature::from_slice(&tea_sig[..]);
         ensure!(sp_io::crypto::ed25519_verify(&tea_sig, &ephemeral_id[..], &tea_id),
                 Error::<T>::InvalidTeaSig);
 
@@ -303,8 +316,10 @@ impl<T: Trait> Module<T> {
                            winner_tea_id: TeaPubKey,
                            ref_num: H256) -> dispatch::DispatchResult {
         let delegate_tea_id = ed25519::Public(delegate_tea_id);
-        let delegate_sig = ed25519::Signature::from_slice(&delegate_sig[..]);
         let auth_payload = [&winner_tea_id[..], &ref_num[..]].concat();
+
+        ensure!(delegate_sig.len() == 64, Error::<T>::InvalidDelegateSig);
+        let delegate_sig = ed25519::Signature::from_slice(&delegate_sig[..]);
 
         ensure!(sp_io::crypto::ed25519_verify(&delegate_sig, &auth_payload[..], &delegate_tea_id),
                 Error::<T>::InvalidDelegateSig);
@@ -316,6 +331,8 @@ impl<T: Trait> Module<T> {
                          executor_sig: Vec<u8>,
                          result: &Vec<u8>) -> dispatch::DispatchResult {
         let executor_tea_id = ed25519::Public(executor_tea_id);
+
+        ensure!(executor_sig.len() == 64, Error::<T>::InvalidExecutorSig);
         let executor_sig = ed25519::Signature::from_slice(&executor_sig[..]);
 
         ensure!(sp_io::crypto::ed25519_verify(&executor_sig, &result[..], &executor_tea_id),
@@ -336,7 +353,10 @@ impl<T: Trait> Module<T> {
         return match tea_id {
             Some(id) => {
                 let node = Self::nodes(id);
-                node
+                return match node {
+                    Some(n) => Some(n),
+                    None => Self::bootstrap_nodes(id)
+                }
             },
             None => None
         }

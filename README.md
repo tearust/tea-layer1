@@ -1,27 +1,4 @@
-<<<<<<< HEAD
-[![Try on playground](https://img.shields.io/badge/Playground-node_template-brightgreen?logo=Parity%20Substrate)](https://playground-staging.substrate.dev/?deploy=node-template)
-
-# Substrate Node Template
-
-A new FRAME-based Substrate node, ready for hacking :rocket:
-
-## Local Development
-
-Follow these steps to prepare your local environment for Substrate development :hammer_and_wrench:
-
-### Simple Method
-
-You can install all the required dependencies with a single command (be patient, this can take up
-to 30 minutes).
-
-```bash
-curl https://getsubstrate.io -sSf | bash -s -- --fast
-```
-
-### Manual Method
-=======
 # TeaRust Blockchain
->>>>>>> rpc
 
 Manual steps for Linux-based systems can be found below; you can
 [find more information at substrate.dev](https://substrate.dev/docs/en/knowledgebase/getting-started/#manual-installation).
@@ -94,7 +71,6 @@ also replace the default command (`cargo build --release && ./target/release/nod
 by appending your own. A few useful ones are as follow.
 
 ```bash
-<<<<<<< HEAD
 # Run Substrate node without re-compiling
 ./scripts/docker_run.sh ./target/release/node-template --dev --ws-external
 
@@ -104,18 +80,6 @@ by appending your own. A few useful ones are as follow.
 # Check whether the code is compilable
 ./scripts/docker_run.sh cargo check
 ```
-=======
-cargo run -- \
-  --base-path /tmp/bob \
-  --bootnodes /ip4/127.0.0.1/tcp/30333/p2p/QmRpheLN4JWdAnY7HGJfWFNbfkQCb6tFf4vvA6hgjMZKrR \
-  --chain=local \
-  --bob \
-  --port 30334 \
-  --telemetry-url ws://telemetry.polkadot.io:1024 \
-  --validator
-```
-
-Additional CLI usage options are available and may be shown by running `cargo run -- --help`.
 
 ## Initial tea node
 > use ed25519 key pair

@@ -100,3 +100,16 @@ fn test_delegate_sig_should_work() {
 	let signature = ed25519::Signature::from_raw(signature);
 	assert!(ed25519::Pair::verify(&signature, &auth_payload[..], &public));
 }
+
+#[test]
+fn get_tea_id_and_sig() {
+	let pair = ed25519::Pair::from_seed(
+		&hex!("119c37b9aa65572ad9e24dd49c4f4da5330fe476f3313c560ffc67888f92b758")
+	);
+	let public = pair.public();
+	println!("pub: {:?}", public);
+
+	let message = hex!("c7e016fad0796bb68594e49a6ef1942cf7e73497e69edb32d19ba2fab3696597");
+	let signature = &pair.sign(&message[..]);
+	println!("sig: {:?}", signature);
+}
