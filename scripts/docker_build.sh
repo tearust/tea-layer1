@@ -2,9 +2,9 @@
 
 set -e
 
-echo "*** Start tea-layer1 node ***"
+echo "*** Start building tea-layer1 ***"
 
 cd $(dirname ${BASH_SOURCE[0]})/..
 
 docker-compose down --remove-orphans
-docker-compose run --rm --service-ports dev $@
+docker-compose run --rm build $@
