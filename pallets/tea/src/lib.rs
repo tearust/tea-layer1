@@ -171,7 +171,7 @@ decl_module! {
 		    tea_id: TeaPubKey,
 		    ephemeral_id: TeaPubKey,
 		    profile_cid: Vec<u8>,
-		    urls: Vec<Vec<u8>>,
+		    urls: Vec<Url>,
 		    tea_sig: Vec<u8>) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -186,7 +186,7 @@ decl_module! {
             	profile_cid,
             	urls,
             };
-            if urls_count > 0 {
+            if urls_count == 0 {
                 <Nodes>::insert(&tea_id, &node);
                 <BootstrapNodes>::remove(&tea_id);
             } else {
