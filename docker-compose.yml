@@ -20,4 +20,4 @@ services:
       - type: bind
         source: ./docker/.local
         target: /root/.local
-    command: bash -c "cargo build --release --target-dir /tearust/tea-layer1/docker/target"
+    command: bash -c "cargo build --target-dir /tearust/tea-layer1/docker/target"
