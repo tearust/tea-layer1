@@ -8,6 +8,7 @@
 
 .idea
 
-.cargo
+docker/.cargo
+docker/.local
 
-.local
+tmp

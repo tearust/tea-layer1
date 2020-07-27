@@ -2,28 +2,22 @@ version: "3.2"
 
 services:
   dev:
-    container_name: tea-layer1
-    image: paritytech/ci-linux:production
-    working_dir: /tearust/tea-layer1
-    environment:
-      - CARGO_HOME=/tearust/tea-layer1/.cargo
+    container_name: tea-layer1-dev
+    image: tearust/tea-layer1:latest
     ports:
       - "9944:9944"
     volumes:
-      - ..:/tearust
-      - type: bind
-        source: ./.local
-        target: /root/.local
-    command: bash -c "cargo build --target-dir /tearust/docker-output/tea-layer1 && /tearust/docker-output/tea-layer1/debug/tea-layer1 --dev --ws-external"
+      - ./docker/.local:/root/.local
+
   build:
     container_name: tea-layer1-build
     image: paritytech/ci-linux:production
     working_dir: /tearust/tea-layer1
     environment:
-      - CARGO_HOME=/tearust/tea-layer1/.cargo
+      - CARGO_HOME=/tearust/tea-layer1/docker/.cargo
     volumes:
       - ../:/tearust
       - type: bind
-        source: ./.local
+        source: ./docker/.local
         target: /root/.local
-    command: bash -c "cargo build --target-dir /tearust/docker-output/tea-layer1"
+    command: bash -c "cargo build --release --target-dir /tearust/tea-layer1/docker/target"
