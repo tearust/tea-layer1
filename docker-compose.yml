@@ -1,14 +1,6 @@
 version: "3.2"
 
 services:
-  dev:
-    container_name: tea-layer1-dev
-    image: tearust/tea-layer1:latest
-    ports:
-      - "9944:9944"
-    volumes:
-      - ./docker/.local:/root/.local
-
   build:
     container_name: tea-layer1-build
     image: paritytech/ci-linux:production
@@ -21,3 +13,43 @@ services:
         source: ./docker/.local
         target: /root/.local
     command: bash -c "cargo build --target-dir /tearust/tea-layer1/docker/target"
+  dev:
+    container_name: tea-layer1-dev
+    image: tearust/tea-layer1:latest
+    ports:
+      - "9944:9944"
+    volumes:
+      - ./docker/.local:/root/.local
+#
+#  alice:
+#    container_name: tea-layer1-alice
+#    image: tearust/tea-layer1:latest
+#    ports:
+#      - "9944:9944"
+#    volumes:
+#      - ./docker/.local/alice:/root/.local
+#    command: bash -c "tea-layer1 --chain local --alice --unsafe-ws-external --rpc-cors all"
+#  bob:
+#    container_name: tea-layer1-bob
+#    image: tearust/tea-layer1:latest
+#    ports:
+#      - "9945:9944"
+#    volumes:
+#      - ./docker/.local/bob:/root/.local
+#    command: bash -c "tea-layer1 --chain local --bob"
+#  charlie:
+#    container_name: tea-layer1-charlie
+#    image: tearust/tea-layer1:latest
+#    ports:
+#      - "9946:9944"
+#    volumes:
+#      - ./docker/.local/charlie:/root/.local
+#    command: bash -c "tea-layer1 --chain local --charlie"
+#  dave:
+#    container_name: tea-layer1-dave
+#    image: tearust/tea-layer1:latest
+#    ports:
+#      - "9947:9944"
+#    volumes:
+#      - ./docker/.local/dave:/root/.local
+#    command: bash -c "tea-layer1 --chain local --dave"

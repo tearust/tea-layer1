@@ -53,6 +53,7 @@ pub struct Node {
     ephemeral_id: TeaPubKey,
     profile_cid: Vec<u8>,
     urls: Vec<Url>,
+    peer_id: Vec<u8>,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -97,6 +98,7 @@ decl_storage! {
 				    ephemeral_id: *ephemeral_id,
 				    profile_cid: Vec::new(),
 				    urls: Vec::new(),
+				    peer_id: Vec::new(),
 				};
 				Nodes::insert(tea_id, node);
 			}
@@ -159,6 +161,7 @@ decl_module! {
             	ephemeral_id: [0u8; 32],
             	profile_cid: Vec::new(),
             	urls: Vec::new(),
+            	peer_id: Vec::new(),
             };
             <Nodes>::insert(tea_id, &new_node);
             Self::deposit_event(RawEvent::NewNodeJoined(sender, new_node));
@@ -172,6 +175,7 @@ decl_module! {
 		    ephemeral_id: TeaPubKey,
 		    profile_cid: Vec<u8>,
 		    urls: Vec<Url>,
+		    peer_id: Vec<u8>,
 		    tea_sig: Vec<u8>) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -185,6 +189,7 @@ decl_module! {
             	ephemeral_id,
             	profile_cid,
             	urls,
+            	peer_id,
             };
             if urls_count == 0 {
                 <Nodes>::insert(&tea_id, &node);
