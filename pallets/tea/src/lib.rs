@@ -44,6 +44,8 @@ pub type TeaPubKey = [u8; 32];
 
 type Url = Vec<u8>;
 
+type Cid = Vec<u8>;
+
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
@@ -72,6 +74,32 @@ pub struct Task<Balance> {
     payment: Balance,
 }
 
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct Data {
+    /// Others can look up layer1 to find out current peer_id
+    delegator_ephemeral_id: TeaPubKey,
+    /// It is the cid of pinner_key_pub
+    deployment_id: Cid,
+    /// Cid of encrypted data
+    cid: Cid,
+    /// Cid of description including price plan. How much to pay data owner per use
+    description: Cid,
+    /// Capability checker
+    cap_checker: Cid,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct Service {
+    /// Others can look up layer1 to find out current peer_id
+    delegator_ephemeral_id: TeaPubKey,
+    /// It is the cid of pinner_key_pub
+    deployment_id: Cid,
+    /// Cid of encrypted data
+    cid: Cid,
+    /// Capability checker
+    cap_checker: Cid,
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
 		Nodes get(fn nodes):
@@ -87,6 +115,11 @@ decl_storage! {
 			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
 		Tasks get(fn tasks):
 			map hasher(blake2_128_concat) H256 => Option<Task<BalanceOf<T>>>;
+
+		DataMap get(fn data_map):
+		    map hasher(blake2_128_concat) Cid => Option<Data>;
+		ServiceMap get(fn service_map):
+		    map hasher(blake2_128_concat) Cid => Option<Service>;
 	}
 
 	add_extra_genesis {
@@ -119,6 +152,8 @@ decl_event!(
 		NewModelAdded(AccountId),
 		NewTaskAdded(AccountId, Task<Balance>),
 		CompleteTask(AccountId, RefNum, Result),
+		NewDataAdded(AccountId, Data),
+		NewServiceAdded(AccountId, Service),
 	}
 );
 
@@ -287,6 +322,52 @@ decl_module! {
             Self::deposit_event(RawEvent::CompleteTask(sender, ref_num, result));
 
 		    Ok(())
+		}
+
+        #[weight = 0]
+		pub fn add_new_data(
+		    origin,
+		    delegator_ephemeral_id: TeaPubKey,
+		    deployment_id: Cid,
+		    cid: Cid,
+		    description: Cid,
+		    cap_checker: Cid,
+		    ) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+		    // ensure!(!Models::<T>::contains_key(&cid), Error::<T>::ModelAlreadyExist);
+            let new_data = Data {
+                delegator_ephemeral_id,
+                deployment_id,
+                cid: cid.clone(),
+                description,
+                cap_checker,
+            };
+            DataMap::insert(cid, &new_data);
+            Self::deposit_event(RawEvent::NewDataAdded(sender, new_data));
+
+            Ok(())
+		}
+
+        #[weight = 0]
+		pub fn add_new_service(
+		    origin,
+		    delegator_ephemeral_id: TeaPubKey,
+		    deployment_id: Cid,
+		    cid: Cid,
+		    cap_checker: Cid,
+		    ) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+		    // ensure!(!Models::<T>::contains_key(&cid), Error::<T>::ModelAlreadyExist);
+            let new_service = Service {
+                delegator_ephemeral_id,
+                deployment_id,
+                cid: cid.clone(),
+                cap_checker,
+            };
+            ServiceMap::insert(cid, &new_service);
+            Self::deposit_event(RawEvent::NewServiceAdded(sender, new_service));
+
+            Ok(())
 		}
 	}
 }
