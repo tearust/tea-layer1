@@ -24,12 +24,18 @@
     "bodyCid": "Bytes",
     "payment": "Balance"
   },
+  "Deposit": {
+    "delegatorEphemeralId": "TeaPubKey",
+    "depositPubkey": "TeaPubKey",
+    "amount": "Balance",
+    "expireTime": "u64"
+  },
   "Data": {
     "delegatorEphemeralId": "TeaPubKey",
     "deploymentId": "Cid",
     "cid": "Cid",
     "description": "Cid",
-    "cap_checker": "Cid"
+    "capChecker": "Cid"
   },
   "Service": {
     "delegatorEphemeralId": "TeaPubKey",

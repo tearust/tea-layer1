@@ -66,6 +66,18 @@ pub struct Model<AccountId> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct Deposit<Balance> {
+    /// Only this delegate node can grant an executor the errand.
+    delegator_ephemeral_id: TeaPubKey,
+    /// An ed25519 public key use for grant a delegate node the errand.
+    deposit_key: TeaPubKey,
+    /// The deposit amount.
+    amount: Balance,
+    /// Specify the expiration height of the deposit.
+    expire_time: u64,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Task<Balance> {
     ref_num: H256,
     delegate_tea_id: TeaPubKey,
@@ -120,6 +132,9 @@ decl_storage! {
 		    map hasher(blake2_128_concat) Cid => Option<Data>;
 		ServiceMap get(fn service_map):
 		    map hasher(blake2_128_concat) Cid => Option<Service>;
+
+		DepositMap get(fn deposit_map):
+			map hasher(twox_64_concat) (T::AccountId, TeaPubKey) => Option<Deposit<BalanceOf<T>>>;
 	}
 
 	add_extra_genesis {
@@ -169,6 +184,9 @@ decl_error! {
 	    InvalidDelegateSig,
 	    InvalidExecutorSig,
 	    InvalidTeaSig,
+	    InvalidExpairTime,
+	    InvalidDepositPubkey,
+	    DelegatorNotExist
 	}
 }
 
@@ -366,6 +384,72 @@ decl_module! {
             };
             ServiceMap::insert(cid, &new_service);
             Self::deposit_event(RawEvent::NewServiceAdded(sender, new_service));
+
+            Ok(())
+		}
+
+		#[weight = 0]
+		pub fn deposite(
+		    origin,
+            delegator_ephemeral_id: TeaPubKey,
+            deposit_key: TeaPubKey,
+            amount: BalanceOf<T>,
+            expire_time: u64,
+		) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+		    // ensure delegator_ephemeral_id exist
+		    // ensure!(, Error::<T>::);
+
+            let neg_imbalance = T::Currency::withdraw(&sender,
+		        amount,
+		        WithdrawReasons::except(WithdrawReason::TransactionPayment),
+		        ExistenceRequirement::AllowDeath)?;
+
+            // if DepositMap::<T>::contains_key((&sender, &delegator_ephemeral_id)) {
+            //     let mut deposit = DepositMap::<T>::get((&sender, &delegator_ephemeral_id)).unwrap();
+		    //     ensure!(expire_time > deposit.expire_time + 100, Error::<T>::InvalidExpairTime);
+		    //     ensure!(deposit_key == deposit.deposit_key, Error::<T>::InvalidDepositPubkey);
+            //     deposit.amount += amount;
+            //     deposit.expire_time = expire_time;
+            //     DepositMap::<T>::insert((sender, delegator_ephemeral_id), deposit);
+            // } else {
+                // valid if expire GT current block number
+
+                let new_deposit = Deposit {
+                    delegator_ephemeral_id,
+                    deposit_key,
+                    amount: neg_imbalance.peek(),
+                    expire_time,
+                };
+                DepositMap::<T>::insert((sender, delegator_ephemeral_id), new_deposit);
+            // }
+
+            Ok(())
+		}
+
+		#[weight = 0]
+		pub fn settle_accounts(
+		    origin,
+		    // use Lookup
+            employer: T::AccountId,
+            delegator_ephemeral_id: TeaPubKey,
+            errand_uuid: Vec<u8>,
+            payment: BalanceOf<T>,
+            accounts_type: u32,
+            employer_sig: Vec<u8>,
+            executor_ephemeral_id: TeaPubKey,
+            expiar_time: u64,
+            delegate_signature: Vec<u8>,
+            result_cid: Cid,
+            executor_singature: Vec<u8>,
+		) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+
+		    ensure!(DepositMap::<T>::contains_key((&employer, &delegator_ephemeral_id)), Error::<T>::DelegatorNotExist);
+
+            let mut deposit = DepositMap::<T>::get((&employer, &delegator_ephemeral_id)).unwrap();
+
+            let _positive_imbalance = T::Currency::deposit_creating(&sender, payment);
 
             Ok(())
 		}
