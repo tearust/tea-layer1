@@ -78,6 +78,18 @@ pub struct Deposit<Balance> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct Bill<AccountId, Balance> {
+    employer: AccountId,
+    delegator_ephemeral_id: TeaPubKey,
+    errand_uuid: Vec<u8>,
+    payment: Balance,
+    payment_type: u32,
+    executor_ephemeral_id: TeaPubKey,
+    expiar_time: u64,
+    result_cid: Cid,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Task<Balance> {
     ref_num: H256,
     delegate_tea_id: TeaPubKey,
@@ -169,6 +181,8 @@ decl_event!(
 		CompleteTask(AccountId, RefNum, Result),
 		NewDataAdded(AccountId, Data),
 		NewServiceAdded(AccountId, Service),
+		NewDepositeAdded(AccountId, Deposit<Balance>),
+		SettleAccounts(AccountId, Bill<AccountId, Balance>),
 	}
 );
 
@@ -186,7 +200,8 @@ decl_error! {
 	    InvalidTeaSig,
 	    InvalidExpairTime,
 	    InvalidDepositPubkey,
-	    DelegatorNotExist
+	    DelegatorNotExist,
+	    InsufficientDeposit,
 	}
 }
 
@@ -389,7 +404,7 @@ decl_module! {
 		}
 
 		#[weight = 0]
-		pub fn deposite(
+		pub fn deposit(
 		    origin,
             delegator_ephemeral_id: TeaPubKey,
             deposit_key: TeaPubKey,
@@ -421,8 +436,10 @@ decl_module! {
                     amount: neg_imbalance.peek(),
                     expire_time,
                 };
-                DepositMap::<T>::insert((sender, delegator_ephemeral_id), new_deposit);
+                DepositMap::<T>::insert((&sender, delegator_ephemeral_id), &new_deposit);
             // }
+
+            Self::deposit_event(RawEvent::NewDepositeAdded(sender, new_deposit));
 
             Ok(())
 		}
@@ -435,7 +452,7 @@ decl_module! {
             delegator_ephemeral_id: TeaPubKey,
             errand_uuid: Vec<u8>,
             payment: BalanceOf<T>,
-            accounts_type: u32,
+            payment_type: u32,
             employer_sig: Vec<u8>,
             executor_ephemeral_id: TeaPubKey,
             expiar_time: u64,
@@ -448,8 +465,23 @@ decl_module! {
 		    ensure!(DepositMap::<T>::contains_key((&employer, &delegator_ephemeral_id)), Error::<T>::DelegatorNotExist);
 
             let mut deposit = DepositMap::<T>::get((&employer, &delegator_ephemeral_id)).unwrap();
+            ensure!(deposit.amount > payment, Error::<T>::InsufficientDeposit);
+            deposit.amount -= payment;
+            DepositMap::<T>::insert((&employer, &delegator_ephemeral_id), deposit);
 
             let _positive_imbalance = T::Currency::deposit_creating(&sender, payment);
+
+            let bill = Bill {
+                employer,
+                delegator_ephemeral_id,
+                errand_uuid,
+                payment,
+                payment_type,
+                executor_ephemeral_id,
+                expiar_time,
+                result_cid,
+            };
+            Self::deposit_event(RawEvent::SettleAccounts(sender, bill));
 
             Ok(())
 		}
