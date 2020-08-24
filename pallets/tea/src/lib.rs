@@ -70,7 +70,9 @@ pub struct Deposit<Balance> {
     /// Only this delegate node can grant an executor the errand.
     delegator_ephemeral_id: TeaPubKey,
     /// An ed25519 public key use for grant a delegate node the errand.
-    deposit_key: TeaPubKey,
+    deposit_pub_key: TeaPubKey,
+    /// The delegator signature used to show that delegator has fulfilled its duties.
+    delegator_signature: Vec<u8>,
     /// The deposit amount.
     amount: Balance,
     /// Specify the expiration height of the deposit.
@@ -407,7 +409,8 @@ decl_module! {
 		pub fn deposit(
 		    origin,
             delegator_ephemeral_id: TeaPubKey,
-            deposit_key: TeaPubKey,
+            deposit_pub_key: TeaPubKey,
+            delegator_signature: Vec<u8>,
             amount: BalanceOf<T>,
             expire_time: u64,
 		) -> dispatch::DispatchResult {
@@ -423,7 +426,7 @@ decl_module! {
             // if DepositMap::<T>::contains_key((&sender, &delegator_ephemeral_id)) {
             //     let mut deposit = DepositMap::<T>::get((&sender, &delegator_ephemeral_id)).unwrap();
 		    //     ensure!(expire_time > deposit.expire_time + 100, Error::<T>::InvalidExpairTime);
-		    //     ensure!(deposit_key == deposit.deposit_key, Error::<T>::InvalidDepositPubkey);
+		    //     ensure!(deposit_pub_key == deposit.deposit_pub_key, Error::<T>::InvalidDepositPubkey);
             //     deposit.amount += amount;
             //     deposit.expire_time = expire_time;
             //     DepositMap::<T>::insert((sender, delegator_ephemeral_id), deposit);
@@ -432,7 +435,8 @@ decl_module! {
 
                 let new_deposit = Deposit {
                     delegator_ephemeral_id,
-                    deposit_key,
+                    deposit_pub_key,
+                    delegator_signature,
                     amount: neg_imbalance.peek(),
                     expire_time,
                 };
