@@ -14,10 +14,12 @@ use serde::{Deserialize, Serialize};
 
 use system::ensure_signed;
 use codec::{Decode, Encode};
-use frame_support::{decl_event, decl_module, decl_storage, decl_error, dispatch,
-                    StorageMap, StorageValue, ensure, debug,
-                    traits::{Randomness, Currency, ExistenceRequirement, WithdrawReason, WithdrawReasons,
-                             Imbalance}};
+use frame_support::{
+    debug,
+    decl_event, decl_module, decl_storage, decl_error, dispatch,
+    StorageMap, StorageValue, ensure,
+    traits::{Randomness, Currency, ExistenceRequirement, WithdrawReason, WithdrawReasons,
+             Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
 use sp_core::{crypto, ed25519, hash::{H256}};
@@ -87,7 +89,7 @@ pub struct Bill<AccountId, Balance> {
     payment: Balance,
     payment_type: u32,
     executor_ephemeral_id: TeaPubKey,
-    expiar_time: u64,
+    expired_time: u64,
     result_cid: Cid,
 }
 
@@ -459,7 +461,7 @@ decl_module! {
             payment_type: u32,
             employer_sig: Vec<u8>,
             executor_ephemeral_id: TeaPubKey,
-            expiar_time: u64,
+            expired_time: u64,
             delegate_signature: Vec<u8>,
             result_cid: Cid,
             executor_singature: Vec<u8>,
@@ -473,6 +475,7 @@ decl_module! {
             deposit.amount -= payment;
             DepositMap::<T>::insert((&employer, &delegator_ephemeral_id), deposit);
 
+            debug::info!("deposit_creating payment: {:?}", payment);
             let _positive_imbalance = T::Currency::deposit_creating(&sender, payment);
 
             let bill = Bill {
@@ -482,7 +485,7 @@ decl_module! {
                 payment,
                 payment_type,
                 executor_ephemeral_id,
-                expiar_time,
+                expired_time,
                 result_cid,
             };
             Self::deposit_event(RawEvent::SettleAccounts(sender, bill));
