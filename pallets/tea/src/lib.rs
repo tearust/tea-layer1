@@ -132,12 +132,12 @@ decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
 		Nodes get(fn nodes):
 			map hasher(twox_64_concat) TeaPubKey => Option<Node>;
-
-		BootstrapNodes get(fn bootstrap_nodes):
-			map hasher(twox_64_concat) TeaPubKey => Option<Node>;
-
 		EphemeralIds get(fn ephemera_ids):
 		    map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
+        BootNodes get(fn boot_nodes):
+            map hasher(twox_64_concat) TeaPubKey => TeaPubKey;
+		PeerIds get(fn peer_ids):
+		    map hasher(twox_64_concat) Vec<u8> => Option<TeaPubKey>;
 
 		Models get(fn models):
 			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
@@ -251,9 +251,14 @@ decl_module! {
 		    tea_sig: Vec<u8>) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-		    ensure!(Nodes::contains_key(&tea_id) || BootstrapNodes::contains_key(&tea_id),
-		        Error::<T>::NodeNotExist);
+		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
 		    Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
+
+            // remove old node info
+            let old_node = Nodes::get(&tea_id).unwrap();
+            BootNodes::remove(old_node.tea_id);
+            EphemeralIds::remove(old_node.ephemeral_id);
+            PeerIds::remove(old_node.peer_id);
 
 		    let urls_count = urls.len();
             let node = Node {
@@ -261,18 +266,18 @@ decl_module! {
             	ephemeral_id,
             	profile_cid,
             	urls,
-            	peer_id,
+            	peer_id: peer_id.clone(),
             };
-            if urls_count == 0 {
-                <Nodes>::insert(&tea_id, &node);
-                <BootstrapNodes>::remove(&tea_id);
-            } else {
-	            <BootstrapNodes>::insert(&tea_id, &node);
-                <Nodes>::remove(&tea_id);
+            <Nodes>::insert(&tea_id, &node);
+	        EphemeralIds::insert(ephemeral_id, &tea_id);
+
+            if urls_count > 0 {
+                <BootNodes>::insert(&tea_id, &tea_id);
             }
 
-		    EphemeralIds::remove(&node.ephemeral_id);
-	        EphemeralIds::insert(ephemeral_id, tea_id);
+            if peer_id.len() > 0 {
+	            PeerIds::insert(peer_id, tea_id);
+            }
 
             Self::deposit_event(RawEvent::UpdateNodeProfile(sender, node));
 
@@ -561,11 +566,7 @@ impl<T: Trait> Module<T> {
 
         return match tea_id {
             Some(id) => {
-                let node = Self::nodes(id);
-                return match node {
-                    Some(n) => Some(n),
-                    None => Self::bootstrap_nodes(id)
-                }
+                Self::nodes(id)
             },
             None => None
         }
