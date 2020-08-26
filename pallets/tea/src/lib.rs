@@ -420,7 +420,7 @@ decl_module! {
 		    // ensure delegator_ephemeral_id exist
 		    // ensure!(, Error::<T>::);
 
-            let neg_imbalance = T::Currency::withdraw(&sender,
+            let _neg_imbalance = T::Currency::withdraw(&sender,
 		        amount,
 		        WithdrawReasons::except(WithdrawReason::TransactionPayment),
 		        ExistenceRequirement::AllowDeath)?;
@@ -439,7 +439,7 @@ decl_module! {
                     delegator_ephemeral_id,
                     deposit_pub_key,
                     delegator_signature,
-                    amount: neg_imbalance.peek(),
+                    amount,
                     expire_time,
                 };
                 DepositMap::<T>::insert((&sender, delegator_ephemeral_id), &new_deposit);
