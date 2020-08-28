@@ -185,7 +185,7 @@ decl_event!(
 		CompleteTask(AccountId, RefNum, Result),
 		NewDataAdded(AccountId, Data),
 		NewServiceAdded(AccountId, Service),
-		NewDepositeAdded(AccountId, Deposit<Balance>),
+		NewDepositAdded(AccountId, Deposit<Balance>),
 		SettleAccounts(AccountId, Bill<AccountId, Balance>),
 	}
 );
@@ -450,7 +450,7 @@ decl_module! {
                 DepositMap::<T>::insert((&sender, delegator_ephemeral_id), &new_deposit);
             // }
 
-            Self::deposit_event(RawEvent::NewDepositeAdded(sender, new_deposit));
+            Self::deposit_event(RawEvent::NewDepositAdded(sender, new_deposit));
 
             Ok(())
 		}
