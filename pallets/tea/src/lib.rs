@@ -206,6 +206,7 @@ decl_error! {
 	    InvalidDepositPubkey,
 	    DelegatorNotExist,
 	    InsufficientDeposit,
+	    DepositAlreadyExist,
 	}
 }
 
@@ -423,7 +424,8 @@ decl_module! {
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 		    // ensure delegator_ephemeral_id exist
-		    // ensure!(, Error::<T>::);
+
+		    ensure!(!DepositMap::<T>::contains_key((&sender, &deposit_pub_key)), Error::<T>::DepositAlreadyExist);
 
             let _neg_imbalance = T::Currency::withdraw(&sender,
 		        amount,
@@ -447,7 +449,7 @@ decl_module! {
                     amount,
                     expire_time,
                 };
-                DepositMap::<T>::insert((&sender, delegator_ephemeral_id), &new_deposit);
+                DepositMap::<T>::insert((&sender, &deposit_pub_key), &new_deposit);
             // }
 
             Self::deposit_event(RawEvent::NewDepositAdded(sender, new_deposit));

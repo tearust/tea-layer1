@@ -119,7 +119,7 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 			changes_trie_config: Default::default(),
 		}),
 		balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 60)).collect(),
+			balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 68)).collect(),
 		}),
 		aura: Some(AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
