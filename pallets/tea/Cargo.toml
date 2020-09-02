@@ -77,13 +77,13 @@ package = 'pallet-randomness-collective-flip'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dev-dependencies.sp-core]
+[dependencies.sp-runtime]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dev-dependencies.sp-runtime]
+[dev-dependencies.sp-core]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'

@@ -22,8 +22,9 @@ use frame_support::{
              Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
-use sp_core::{crypto, ed25519, hash::{H256}};
+use sp_core::{crypto::{AccountId32}, ed25519, sr25519, hash::{H256}};
 use pallet_balances as balances;
+use sp_runtime::traits::{Verify,IdentifyAccount};
 
 #[cfg(test)]
 mod mock;
@@ -69,6 +70,8 @@ pub struct Model<AccountId> {
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Deposit<Balance> {
+    /// Delegator device id.
+    // delegator_tea_id: TeaPubKey,
     /// Only this delegate node can grant an executor the errand.
     delegator_ephemeral_id: TeaPubKey,
     /// An ed25519 public key use for grant a delegate node the errand.
@@ -423,8 +426,26 @@ decl_module! {
             expire_time: u64,
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
-		    // ensure delegator_ephemeral_id exist
 
+            debug::info!("sender: {:?}", sender);
+            debug::info!("sender: {:#?}", sender);
+
+		    // let public = sr25519::Public(*(sender as AccountId32).as_ref());
+		    // let public = sr25519::Public::from_str(sender);
+            //
+            // ensure!(delegator_signature.len() == 64, Error::<T>::InvalidExecutorSig);
+            // let signature = ed25519::Signature::from_slice(&delegator_signature[..]);
+
+            // assert!(signature.verify(msg, &pair.public()));
+            // signature.verify(&delegator_ephemeral_id[..], sender);
+            // Verify::verify(&signature, &delegator_ephemeral_id[..], &public);
+
+            // ensure!(sp_io::crypto::ed25519_verify(&signature, &delegator_ephemeral_id[..], &public),
+            //         Error::<T>::InvalidExecutorSig);
+
+
+
+		    // ensure delegator_ephemeral_id exist
 		    ensure!(!DepositMap::<T>::contains_key((&sender, &deposit_pub_key)), Error::<T>::DepositAlreadyExist);
 
             let _neg_imbalance = T::Currency::withdraw(&sender,
@@ -442,17 +463,17 @@ decl_module! {
             // } else {
                 // valid if expire GT current block number
 
-                let new_deposit = Deposit {
-                    delegator_ephemeral_id,
-                    deposit_pub_key,
-                    delegator_signature,
-                    amount,
-                    expire_time,
-                };
-                DepositMap::<T>::insert((&sender, &deposit_pub_key), &new_deposit);
+                // let new_deposit = Deposit {
+                //     delegator_ephemeral_id,
+                //     deposit_pub_key,
+                //     delegator_signature,
+                //     amount,
+                //     expire_time,
+                // };
+                // DepositMap::<T>::insert((&sender, &deposit_pub_key), &new_deposit);
             // }
 
-            Self::deposit_event(RawEvent::NewDepositAdded(sender, new_deposit));
+            // Self::deposit_event(RawEvent::NewDepositAdded(sender, new_deposit));
 
             Ok(())
 		}

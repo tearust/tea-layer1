@@ -5,9 +5,11 @@ use frame_support::{assert_ok, assert_noop};
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 use std::vec::Vec;
-use sp_core::{crypto, ed25519, hash::{H256, H512}, Pair};
+use sp_core::{crypto, ed25519, sr25519, hash::{H256, H512}, Pair};
 use hex_literal::hex;
 use hex as hex_o;
+use sp_core::crypto::AccountId32;
+use std::str::FromStr;
 
 #[test]
 fn it_works_for_default_value() {
@@ -112,4 +114,15 @@ fn get_tea_id_and_sig() {
 	let message = hex!("c7e016fad0796bb68594e49a6ef1942cf7e73497e69edb32d19ba2fab3696597");
 	let signature = &pair.sign(&message[..]);
 	println!("sig: {:?}", signature);
+}
+
+#[test]
+fn test_account_id_verification_should_work() {
+	let message = hex!("1234");
+	let signature = hex!("8ac5b79ca6ff412f576a0163b1daeb6b5d0a51fccab87b25c4d66d0323ca3a7ee95e4a036945409477bc9cd79f48e31c456ce6327ff1ba568817ce19cdee9e81");
+	let signature = sr25519::Signature::from_raw(signature);
+
+	let public = sr25519::Public::from_str("5GBykvvrUz3vwTttgHzUEPdm7G1FND1reBfddQLdiaCbhoMd").unwrap();
+	println!("pub: {:?}", public);
+	assert!(sr25519::Pair::verify(&signature, &message[..], &public));
 }
