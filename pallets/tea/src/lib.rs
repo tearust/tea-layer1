@@ -22,7 +22,7 @@ use frame_support::{
              Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
-use sp_core::{crypto::{AccountId32}, ed25519, sr25519, hash::{H256}};
+use sp_core::{crypto::{AccountId32,Public}, ed25519, sr25519, hash::{H256}};
 use pallet_balances as balances;
 use sp_runtime::traits::{Verify,IdentifyAccount};
 
@@ -71,11 +71,9 @@ pub struct Model<AccountId> {
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Deposit<Balance> {
     /// Delegator device id.
-    // delegator_tea_id: TeaPubKey,
+    delegator_tea_id: TeaPubKey,
     /// Only this delegate node can grant an executor the errand.
     delegator_ephemeral_id: TeaPubKey,
-    /// An ed25519 public key use for grant a delegate node the errand.
-    deposit_pub_key: TeaPubKey,
     /// The delegator signature used to show that delegator has fulfilled its duties.
     delegator_signature: Vec<u8>,
     /// The deposit amount.
@@ -87,6 +85,7 @@ pub struct Deposit<Balance> {
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Bill<AccountId, Balance> {
     employer: AccountId,
+    delegator_tea_id: TeaPubKey,
     delegator_ephemeral_id: TeaPubKey,
     errand_uuid: Vec<u8>,
     payment: Balance,
@@ -206,10 +205,11 @@ decl_error! {
 	    InvalidExecutorSig,
 	    InvalidTeaSig,
 	    InvalidExpairTime,
-	    InvalidDepositPubkey,
+	    InvalidSignatureLength,
 	    DelegatorNotExist,
 	    InsufficientDeposit,
 	    DepositAlreadyExist,
+	    DepositNotExist,
 	}
 }
 
@@ -419,61 +419,49 @@ decl_module! {
 		#[weight = 0]
 		pub fn deposit(
 		    origin,
+            delegator_tea_id: TeaPubKey,
             delegator_ephemeral_id: TeaPubKey,
-            deposit_pub_key: TeaPubKey,
             delegator_signature: Vec<u8>,
             amount: BalanceOf<T>,
             expire_time: u64,
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
+		    // todo: ensure delegator_tea_id exist
 
-            debug::info!("sender: {:?}", sender);
-            debug::info!("sender: {:#?}", sender);
+		    // todo: ensure delegator_ephemeral_id exist
 
-		    // let public = sr25519::Public(*(sender as AccountId32).as_ref());
-		    // let public = sr25519::Public::from_str(sender);
-            //
-            // ensure!(delegator_signature.len() == 64, Error::<T>::InvalidExecutorSig);
-            // let signature = ed25519::Signature::from_slice(&delegator_signature[..]);
+		    // todo: ensure delegator_tea_id match delegator_ephemeral_id
 
-            // assert!(signature.verify(msg, &pair.public()));
-            // signature.verify(&delegator_ephemeral_id[..], sender);
-            // Verify::verify(&signature, &delegator_ephemeral_id[..], &public);
+		    // todo: ensure delegator_signature valid
 
-            // ensure!(sp_io::crypto::ed25519_verify(&signature, &delegator_ephemeral_id[..], &public),
-            //         Error::<T>::InvalidExecutorSig);
-
-
-
-		    // ensure delegator_ephemeral_id exist
-		    ensure!(!DepositMap::<T>::contains_key((&sender, &deposit_pub_key)), Error::<T>::DepositAlreadyExist);
+		    // todo: ensure!(!DepositMap::<T>::contains_key((&sender, &delegator_tea_id)), Error::<T>::DepositAlreadyExist);
 
             let _neg_imbalance = T::Currency::withdraw(&sender,
 		        amount,
 		        WithdrawReasons::except(WithdrawReason::TransactionPayment),
 		        ExistenceRequirement::AllowDeath)?;
 
-            // if DepositMap::<T>::contains_key((&sender, &delegator_ephemeral_id)) {
-            //     let mut deposit = DepositMap::<T>::get((&sender, &delegator_ephemeral_id)).unwrap();
-		    //     ensure!(expire_time > deposit.expire_time + 100, Error::<T>::InvalidExpairTime);
-		    //     ensure!(deposit_pub_key == deposit.deposit_pub_key, Error::<T>::InvalidDepositPubkey);
-            //     deposit.amount += amount;
-            //     deposit.expire_time = expire_time;
-            //     DepositMap::<T>::insert((sender, delegator_ephemeral_id), deposit);
-            // } else {
-                // valid if expire GT current block number
-
-                // let new_deposit = Deposit {
-                //     delegator_ephemeral_id,
-                //     deposit_pub_key,
-                //     delegator_signature,
-                //     amount,
-                //     expire_time,
-                // };
-                // DepositMap::<T>::insert((&sender, &deposit_pub_key), &new_deposit);
-            // }
-
-            // Self::deposit_event(RawEvent::NewDepositAdded(sender, new_deposit));
+            if DepositMap::<T>::contains_key((&sender, &delegator_tea_id)) {
+                let mut deposit = DepositMap::<T>::get((&sender, &delegator_tea_id)).unwrap();
+                // todo: verify if expire time GT old_expire_time + 100
+		        // ensure!(expire_time > deposit.expire_time + 100, Error::<T>::InvalidExpairTime);
+		        // ensure!(delegator_tea_id == deposit.delegator_tea_id, Error::<T>::InvalidSignatureLength);
+                deposit.amount += amount;
+                deposit.expire_time = expire_time;
+                DepositMap::<T>::insert((&sender, &delegator_tea_id), &deposit);
+                Self::deposit_event(RawEvent::NewDepositAdded(sender, deposit));
+            } else {
+                // todo: verify if expire time GT current block number + 100
+                let new_deposit = Deposit {
+                    delegator_tea_id,
+                    delegator_ephemeral_id,
+                    delegator_signature,
+                    amount,
+                    expire_time,
+                };
+                DepositMap::<T>::insert((&sender, &delegator_tea_id), &new_deposit);
+                Self::deposit_event(RawEvent::NewDepositAdded(sender, new_deposit));
+            }
 
             Ok(())
 		}
@@ -483,6 +471,7 @@ decl_module! {
 		    origin,
 		    // use Lookup
             employer: T::AccountId,
+            delegator_tea_id: TeaPubKey,
             delegator_ephemeral_id: TeaPubKey,
             errand_uuid: Vec<u8>,
             payment: BalanceOf<T>,
@@ -496,18 +485,27 @@ decl_module! {
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 
-		    ensure!(DepositMap::<T>::contains_key((&employer, &delegator_ephemeral_id)), Error::<T>::DelegatorNotExist);
+		    ensure!(DepositMap::<T>::contains_key((&employer, &delegator_tea_id)), Error::<T>::DepositNotExist);
 
-            let mut deposit = DepositMap::<T>::get((&employer, &delegator_ephemeral_id)).unwrap();
+            // todo: verify employer signature
+            // let signer = employer.encode();
+		    // let public = sr25519::Public::from_slice(&signer[..]);
+            //
+            // // ensure!(delegator_signature.len() == 64, Error::<T>::InvalidExecutorSig);
+            // let signature = sr25519::Signature::from_slice(&delegator_signature[..]);
+            // ensure!(signature.verify(&delegator_ephemeral_id[..], &public), Error::<T>::InvalidExecutorSig);
+
+            let mut deposit = DepositMap::<T>::get((&employer, &delegator_tea_id)).unwrap();
             ensure!(deposit.amount > payment, Error::<T>::InsufficientDeposit);
             deposit.amount -= payment;
-            DepositMap::<T>::insert((&employer, &delegator_ephemeral_id), deposit);
+            DepositMap::<T>::insert((&employer, &delegator_tea_id), deposit);
 
             debug::info!("deposit_creating payment: {:?}", payment);
             let _positive_imbalance = T::Currency::deposit_creating(&sender, payment);
 
             let bill = Bill {
                 employer,
+                delegator_tea_id,
                 delegator_ephemeral_id,
                 errand_uuid,
                 payment,

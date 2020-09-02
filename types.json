@@ -26,14 +26,15 @@
     "payment": "Balance"
   },
   "Deposit": {
+    "delegatorTeaId": "TeaPubKey",
     "delegatorEphemeralId": "TeaPubKey",
-    "depositPubkey": "TeaPubKey",
     "delegatorSignature": "Bytes",
     "amount": "Balance",
     "expiredTime": "u64"
   },
   "Bill": {
     "employer": "AccountId",
+    "delegatorTeaId": "TeaPubKey",
     "delegatorEphemeralId": "TeaPubKey",
     "errandUuid": "Bytes",
     "payment": "Balance",
