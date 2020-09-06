@@ -24,7 +24,9 @@ use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
 use sp_core::{crypto::{AccountId32,Public}, ed25519, sr25519, hash::{H256}};
 use pallet_balances as balances;
-use sp_runtime::traits::{Verify,IdentifyAccount};
+use sp_runtime::traits::{
+        Verify,IdentifyAccount,CheckedAdd,One,Zero,
+    };
 
 #[cfg(test)]
 mod mock;
@@ -88,11 +90,10 @@ pub struct Bill<AccountId, Balance> {
     delegator_tea_id: TeaPubKey,
     delegator_ephemeral_id: TeaPubKey,
     errand_uuid: Vec<u8>,
-    payment: Balance,
-    payment_type: u32,
     executor_ephemeral_id: TeaPubKey,
     expired_time: u64,
     result_cid: Cid,
+    bills: Vec<(AccountId, Balance)>,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -210,6 +211,7 @@ decl_error! {
 	    InsufficientDeposit,
 	    DepositAlreadyExist,
 	    DepositNotExist,
+	    PaymentOverflow,
 	}
 }
 
@@ -474,16 +476,17 @@ decl_module! {
             delegator_tea_id: TeaPubKey,
             delegator_ephemeral_id: TeaPubKey,
             errand_uuid: Vec<u8>,
-            payment: BalanceOf<T>,
-            payment_type: u32,
             employer_sig: Vec<u8>,
             executor_ephemeral_id: TeaPubKey,
             expired_time: u64,
             delegate_signature: Vec<u8>,
             result_cid: Cid,
             executor_singature: Vec<u8>,
+            bills: Vec<(T::AccountId, BalanceOf<T>)>,
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
+
+		    // debug::info!("bill: {:?}", bill);
 
 		    ensure!(DepositMap::<T>::contains_key((&employer, &delegator_tea_id)), Error::<T>::DepositNotExist);
 
@@ -495,24 +498,30 @@ decl_module! {
             // let signature = sr25519::Signature::from_slice(&delegator_signature[..]);
             // ensure!(signature.verify(&delegator_ephemeral_id[..], &public), Error::<T>::InvalidExecutorSig);
 
+            // todo: limit bills array length
+            let mut total_amount: BalanceOf<T> = BalanceOf::<T>::default();
+            for (_account_id, payment) in &bills {
+			    total_amount = total_amount.checked_add(payment).ok_or(Error::<T>::PaymentOverflow)?;
+            }
             let mut deposit = DepositMap::<T>::get((&employer, &delegator_tea_id)).unwrap();
-            ensure!(deposit.amount > payment, Error::<T>::InsufficientDeposit);
-            deposit.amount -= payment;
+            ensure!(deposit.amount > total_amount, Error::<T>::InsufficientDeposit);
+            deposit.amount -= total_amount;
             DepositMap::<T>::insert((&employer, &delegator_tea_id), deposit);
 
-            debug::info!("deposit_creating payment: {:?}", payment);
-            let _positive_imbalance = T::Currency::deposit_creating(&sender, payment);
+            debug::info!("deposit_creating total_amount: {:?}", total_amount);
+            for (account_id, payment) in &bills {
+                let _positive_imbalance = T::Currency::deposit_creating(account_id, *payment);
+            }
 
             let bill = Bill {
                 employer,
                 delegator_tea_id,
                 delegator_ephemeral_id,
                 errand_uuid,
-                payment,
-                payment_type,
                 executor_ephemeral_id,
                 expired_time,
                 result_cid,
+                bills,
             };
             Self::deposit_event(RawEvent::SettleAccounts(sender, bill));
 

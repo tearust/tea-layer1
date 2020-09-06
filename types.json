@@ -37,11 +37,10 @@
     "delegatorTeaId": "TeaPubKey",
     "delegatorEphemeralId": "TeaPubKey",
     "errandUuid": "Bytes",
-    "payment": "Balance",
-    "paymentType": "u32",
     "executorEphemeralId": "TeaPubKey",
     "expiredTime": "u64",
-    "resultCid": "Cid"
+    "resultCid": "Cid",
+    "bills": "Vec<(AccountId, Balance)>"
   },
   "Data": {
     "delegatorEphemeralId": "TeaPubKey",
