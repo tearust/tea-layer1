@@ -37,6 +37,7 @@
     "delegatorTeaId": "TeaPubKey",
     "delegatorEphemeralId": "TeaPubKey",
     "errandUuid": "Bytes",
+    "errandJsonCid": "Bytes",
     "executorEphemeralId": "TeaPubKey",
     "expiredTime": "u64",
     "resultCid": "Cid",
