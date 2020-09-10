@@ -489,6 +489,8 @@ decl_module! {
 		    let sender = ensure_signed(origin)?;
 
 		    // debug::info!("bill: {:?}", bill);
+            // todo: check if the expired_time is lower than current block height, if false then treat the settle account
+            //  as failed, and fire settle account request expired event
 
 		    ensure!(DepositMap::<T>::contains_key((&employer, &delegator_tea_id)), Error::<T>::DepositNotExist);
 
