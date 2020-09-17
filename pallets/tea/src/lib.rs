@@ -17,12 +17,12 @@ use codec::{Decode, Encode};
 use frame_support::{
     debug,
     decl_event, decl_module, decl_storage, decl_error, dispatch,
-    StorageMap, StorageValue, ensure,
+    StorageMap, StorageValue, IterableStorageMap, ensure,
     traits::{Randomness, Currency, ExistenceRequirement, WithdrawReason, WithdrawReasons,
              Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
-use sp_core::{crypto::{AccountId32,Public}, ed25519, sr25519, hash::{H256}};
+use sp_core::{crypto::{AccountId32,Public}, ed25519, sr25519, H256, U256};
 use pallet_balances as balances;
 use sp_runtime::traits::{
         Verify,IdentifyAccount,CheckedAdd,One,Zero,
@@ -51,16 +51,26 @@ type Url = Vec<u8>;
 
 type Cid = Vec<u8>;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-#[cfg_attr(feature = "std", serde(deny_unknown_fields))]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
+enum NodeStatus {
+    Pending,
+    Active,
+    Invalid,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
+// #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+// #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+// #[cfg_attr(feature = "std", serde(deny_unknown_fields))]
 pub struct Node {
     tea_id: TeaPubKey,
     ephemeral_id: TeaPubKey,
     profile_cid: Vec<u8>,
     urls: Vec<Url>,
     peer_id: Vec<u8>,
+    create_time: u64,
+    ra_nodes: Vec<(TeaPubKey, bool)>,
+    status: NodeStatus,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -132,6 +142,13 @@ pub struct Service {
     cap_checker: Cid,
 }
 
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct RaResult {
+    tea_id: TeaPubKey,
+    target_tea_id: TeaPubKey,
+    is_pass: bool,
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
 		Nodes get(fn nodes):
@@ -167,6 +184,9 @@ decl_storage! {
 				    profile_cid: Vec::new(),
 				    urls: Vec::new(),
 				    peer_id: Vec::new(),
+				    create_time: 0,
+				    ra_nodes: Vec::new(),
+				    status: NodeStatus::Active,
 				};
 				Nodes::insert(tea_id, node);
 			}
@@ -191,6 +211,7 @@ decl_event!(
 		NewServiceAdded(AccountId, Service),
 		NewDepositAdded(AccountId, Deposit<Balance>),
 		SettleAccounts(AccountId, Bill<AccountId, Balance>),
+		CommitRaResult(AccountId, RaResult),
 	}
 );
 
@@ -213,6 +234,8 @@ decl_error! {
 	    DepositAlreadyExist,
 	    DepositNotExist,
 	    PaymentOverflow,
+	    NodeAlreadyActive,
+	    NotInRaNodes,
 	}
 }
 
@@ -230,20 +253,103 @@ decl_module! {
 		fn deposit_event() = default;
 
         #[weight = 0]
-		pub fn add_new_node(origin, tea_id: TeaPubKey) -> dispatch::DispatchResult {
+		pub fn add_new_node(origin, tea_id: TeaPubKey, peer_id: Vec<u8>) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 
 		    ensure!(!Nodes::contains_key(&tea_id), Error::<T>::NodeAlreadyExist);
 
-            let new_node = Node {
+            let mut new_node = Node {
                 tea_id: tea_id.clone(),
             	ephemeral_id: [0u8; 32],
             	profile_cid: Vec::new(),
             	urls: Vec::new(),
-            	peer_id: Vec::new(),
+            	peer_id,
+            	create_time: 0,
+            	ra_nodes: Vec::new(),
+            	status: NodeStatus::Pending,
             };
+
+            let random_seed = <pallet_randomness_collective_flip::Module<T>>::random_seed();
+            let payload = (
+                random_seed,
+                sender.clone(),
+                tea_id.clone(),
+                <system::Module<T>>::block_number(),
+            );
+            let _random: U256 = payload.using_encoded(blake2_256).into();
+
+            // todo: use random to generate ra nodes.
+            // let index = random % 4;
+
+            // select first 4 nodes as ra nodes for dev.
+            let mut count = 0;
+            for (tea_id, _) in Nodes::iter() {
+                new_node.ra_nodes.push((tea_id, false));
+                count += 1;
+                if count == 4 {
+                    break;
+                }
+            }
+
             <Nodes>::insert(tea_id, &new_node);
             Self::deposit_event(RawEvent::NewNodeJoined(sender, new_node));
+
+            Ok(())
+		}
+
+		#[weight = 0]
+		pub fn remote_attestation(origin,
+            tea_id: TeaPubKey,
+            target_tea_id: TeaPubKey,
+            is_pass: bool,
+            signature: Vec<u8>,
+		) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
+
+            // todo: verify signature
+
+		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
+		    ensure!(Nodes::contains_key(&target_tea_id), Error::<T>::NodeNotExist);
+            let mut target_node = Nodes::get(&target_tea_id).unwrap();
+            ensure!(target_node.status != NodeStatus::Active, Error::<T>::NodeAlreadyActive);
+
+            // make sure tea_id in target ra_nodes vec.
+            let mut exist_in_ra_nodes = false;
+            let mut index = 0;
+            for i in 0..target_node.ra_nodes.len() {
+                index = i;
+                let (ra_tea_id, _) = target_node.ra_nodes[i];
+                if ra_tea_id == tea_id {
+                    exist_in_ra_nodes = true;
+                    break;
+                }
+            }
+            ensure!(exist_in_ra_nodes, Error::<T>::NotInRaNodes);
+            if is_pass {
+                target_node.ra_nodes[index] = (tea_id, true);
+                // calculate target node status
+                let mut count = 0;
+                for (_ra_tea_id, is_pass) in &target_node.ra_nodes {
+                    if *is_pass {
+                        count += 1;
+                    }
+                }
+                // need 3/4 vote at least.
+                if count > 2 {
+                    target_node.status = NodeStatus::Active;
+                }
+            } else {
+                target_node.ra_nodes[index] = (tea_id, false);
+                target_node.status = NodeStatus::Invalid;
+            }
+            Nodes::insert(target_tea_id, target_node);
+
+            let ra_result = RaResult {
+                tea_id,
+                target_tea_id,
+                is_pass,
+            };
+            Self::deposit_event(RawEvent::CommitRaResult(sender, ra_result));
 
             Ok(())
 		}
@@ -255,7 +361,8 @@ decl_module! {
 		    profile_cid: Vec<u8>,
 		    urls: Vec<Url>,
 		    peer_id: Vec<u8>,
-		    tea_sig: Vec<u8>) -> dispatch::DispatchResult {
+		    tea_sig: Vec<u8>,
+		) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
@@ -274,6 +381,9 @@ decl_module! {
             	profile_cid,
             	urls,
             	peer_id: peer_id.clone(),
+            	create_time: old_node.create_time,
+            	ra_nodes: old_node.ra_nodes,
+            	status: old_node.status,
             };
             <Nodes>::insert(&tea_id, &node);
 	        EphemeralIds::insert(ephemeral_id, &tea_id);
@@ -475,9 +585,9 @@ decl_module! {
 		    // use Lookup
             employer: T::AccountId,
             delegator_tea_id: TeaPubKey,
-            delegator_ephemeral_id: TeaPubKey,
-            errand_uuid: Vec<u8>,
-            errand_json_cid: Cid,
+            delegator_ephemeral_id: TeaPubKey,//+
+            errand_uuid: Vec<u8>,//-
+            errand_json_cid: Cid,//-
             employer_sig: Vec<u8>,
             executor_ephemeral_id: TeaPubKey,
             expired_time: u64,

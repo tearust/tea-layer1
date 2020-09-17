@@ -6,12 +6,23 @@
   "Cid": "Bytes",
   "RefNum": "H256",
   "Result": "Bytes",
+  "NodeStatus": {
+    "_enum": ["Pending", "Active", "Invalid"]
+  },
+  "RaResult": {
+    "teaId": "TeaPubKey",
+    "targetTeaId": "TeaPubKey",
+    "isPass": "bool"
+  },
   "Node": {
     "teaId": "TeaPubKey",
     "ephemeralId": "TeaPubKey",
     "profileCid": "Bytes",
     "urls": "Vec<Url>",
-    "peerId": "Bytes"
+    "peerId": "Bytes",
+    "createTime": "u64",
+    "raNodes": "Vec<(TeaPubKey, bool)>",
+    "status": "NodeStatus"
   },
   "Model": {
     "account": "AccountId",

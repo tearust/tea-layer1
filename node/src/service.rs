@@ -112,12 +112,12 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 			let provider = client as Arc<dyn StorageAndProofProvider<_, _>>;
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
 		})?
-		.with_rpc_extensions(|builder,| -> Result<RpcExtension, _>{
-			let mut io = jsonrpc_core::IoHandler::default();
-			// Use the fully qualified name starting from `crate` because we're in macro_rules!
-			io.extend_with(crate::jsonrpc::TeaNodeApi::to_delegate(crate::jsonrpc::TeaNode::new(builder.client().clone())));
-			Ok(io)
-		})?
+		// .with_rpc_extensions(|builder,| -> Result<RpcExtension, _>{
+		// 	let mut io = jsonrpc_core::IoHandler::default();
+		// 	// Use the fully qualified name starting from `crate` because we're in macro_rules!
+		// 	io.extend_with(crate::jsonrpc::TeaNodeApi::to_delegate(crate::jsonrpc::TeaNode::new(builder.client().clone())));
+		// 	Ok(io)
+		// })?
 		.build_full()?;
 
 	if role.is_authority() {
