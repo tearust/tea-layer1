@@ -149,8 +149,17 @@ pub struct RaResult {
     is_pass: bool,
 }
 
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct ManifestInfo {
+    tea_id: TeaPubKey,
+    manifest_cid: Cid,
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
+	    Manifest get(fn manifest):
+	        map hasher(twox_64_concat) TeaPubKey => Option<Cid>;
+
 		Nodes get(fn nodes):
 			map hasher(twox_64_concat) TeaPubKey => Option<Node>;
 		EphemeralIds get(fn ephemera_ids):
@@ -212,6 +221,7 @@ decl_event!(
 		NewDepositAdded(AccountId, Deposit<Balance>),
 		SettleAccounts(AccountId, Bill<AccountId, Balance>),
 		CommitRaResult(AccountId, RaResult),
+		UpdateManifest(AccountId, ManifestInfo),
 	}
 );
 
@@ -253,46 +263,38 @@ decl_module! {
 		fn deposit_event() = default;
 
         #[weight = 0]
-		pub fn add_new_node(origin, tea_id: TeaPubKey, peer_id: Vec<u8>) -> dispatch::DispatchResult {
+		pub fn add_new_node(origin, tea_id: TeaPubKey) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 
 		    ensure!(!Nodes::contains_key(&tea_id), Error::<T>::NodeAlreadyExist);
 
-            let mut new_node = Node {
+            let new_node = Node {
                 tea_id: tea_id.clone(),
             	ephemeral_id: [0u8; 32],
             	profile_cid: Vec::new(),
             	urls: Vec::new(),
-            	peer_id,
+            	peer_id: Vec::new(),
             	create_time: 0,
             	ra_nodes: Vec::new(),
             	status: NodeStatus::Pending,
             };
 
-            let random_seed = <pallet_randomness_collective_flip::Module<T>>::random_seed();
-            let payload = (
-                random_seed,
-                sender.clone(),
-                tea_id.clone(),
-                <system::Module<T>>::block_number(),
-            );
-            let _random: U256 = payload.using_encoded(blake2_256).into();
-
-            // todo: use random to generate ra nodes.
-            // let index = random % 4;
-
-            // select first 4 nodes as ra nodes for dev.
-            let mut count = 0;
-            for (tea_id, _) in Nodes::iter() {
-                new_node.ra_nodes.push((tea_id, false));
-                count += 1;
-                if count == 4 {
-                    break;
-                }
-            }
-
             <Nodes>::insert(tea_id, &new_node);
             Self::deposit_event(RawEvent::NewNodeJoined(sender, new_node));
+
+            Ok(())
+		}
+
+		#[weight = 0]
+		pub fn update_manifest(origin, tea_id: TeaPubKey, manifest_cid: Cid) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+            <Manifest>::insert(tea_id, &manifest_cid);
+
+            let manifest_info = ManifestInfo {
+                tea_id,
+                manifest_cid,
+            };
+            Self::deposit_event(RawEvent::UpdateManifest(sender, manifest_info));
 
             Ok(())
 		}
@@ -374,6 +376,30 @@ decl_module! {
             EphemeralIds::remove(old_node.ephemeral_id);
             PeerIds::remove(old_node.peer_id);
 
+            // generate ra nodes
+            let random_seed = <pallet_randomness_collective_flip::Module<T>>::random_seed();
+            let payload = (
+                random_seed,
+                sender.clone(),
+                tea_id.clone(),
+                <system::Module<T>>::block_number(),
+            );
+            let _random: U256 = payload.using_encoded(blake2_256).into();
+
+            // todo: use random to generate ra nodes.
+            // let index = random % 4;
+
+            // select first 4 nodes as ra nodes for dev.
+            let mut count = 0;
+            let mut ra_nodes = Vec::new();
+            for (tea_id, _) in Nodes::iter() {
+                ra_nodes.push((tea_id, false));
+                count += 1;
+                if count == 4 {
+                    break;
+                }
+            }
+
 		    let urls_count = urls.len();
             let node = Node {
                 tea_id: tea_id.clone(),
@@ -382,7 +408,7 @@ decl_module! {
             	urls,
             	peer_id: peer_id.clone(),
             	create_time: old_node.create_time,
-            	ra_nodes: old_node.ra_nodes,
+            	ra_nodes: ra_nodes,
             	status: old_node.status,
             };
             <Nodes>::insert(&tea_id, &node);
