@@ -74,13 +74,6 @@ pub struct Node {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct Model<AccountId> {
-    account: AccountId,
-    price: u32,
-    cid: Vec<u8>,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Deposit<Balance> {
     /// Delegator device id.
     delegator_tea_id: TeaPubKey,
@@ -105,15 +98,6 @@ pub struct Bill<AccountId, Balance> {
     expired_time: u64,
     result_cid: Cid,
     bills: Vec<(AccountId, Balance)>,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct Task<Balance> {
-    ref_num: H256,
-    delegate_tea_id: TeaPubKey,
-    model_cid: Vec<u8>,
-    body_cid: Vec<u8>,
-    payment: Balance,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -169,11 +153,6 @@ decl_storage! {
 		PeerIds get(fn peer_ids):
 		    map hasher(twox_64_concat) Vec<u8> => Option<TeaPubKey>;
 
-		Models get(fn models):
-			map hasher(blake2_128_concat) Vec<u8> => Model<T::AccountId>;
-		Tasks get(fn tasks):
-			map hasher(blake2_128_concat) H256 => Option<Task<BalanceOf<T>>>;
-
 		DataMap get(fn data_map):
 		    map hasher(blake2_128_concat) Cid => Option<Data>;
 		ServiceMap get(fn service_map):
@@ -208,14 +187,9 @@ decl_event!(
 	where
 		AccountId = <T as system::Trait>::AccountId,
 		Balance = BalanceOf<T>,
-		RefNum = H256,
-		Result = Vec<u8>,
 	{
 		NewNodeJoined(AccountId, Node),
 		UpdateNodeProfile(AccountId, Node),
-		NewModelAdded(AccountId),
-		NewTaskAdded(AccountId, Task<Balance>),
-		CompleteTask(AccountId, RefNum, Result),
 		NewDataAdded(AccountId, Data),
 		NewServiceAdded(AccountId, Service),
 		NewDepositAdded(AccountId, Deposit<Balance>),
@@ -230,10 +204,6 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 	    NodeAlreadyExist,
 	    NodeNotExist,
-	    ModelAlreadyExist,
-	    ModelNotExist,
-	    TaskNotExist,
-	    TaskCountOverflow,
 	    InvalidDelegateSig,
 	    InvalidExecutorSig,
 	    InvalidTeaSig,
@@ -368,7 +338,7 @@ decl_module! {
 			let sender = ensure_signed(origin)?;
 
 		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
-		    Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
+		    // Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
 
             // remove old node info
             let old_node = Nodes::get(&tea_id).unwrap();
@@ -425,88 +395,6 @@ decl_module! {
             Self::deposit_event(RawEvent::UpdateNodeProfile(sender, node));
 
             Ok(())
-		}
-
-        #[weight = 0]
-		pub fn add_new_model(origin, price: u32, cid: Vec<u8>) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
-
-		    ensure!(!Models::<T>::contains_key(&cid), Error::<T>::ModelAlreadyExist);
-
-            let new_model = Model {
-                account: sender.clone(),
-                price,
-                cid: cid.clone(),
-            };
-            <Models<T>>::insert(cid, new_model);
-            Self::deposit_event(RawEvent::NewModelAdded(sender));
-
-            Ok(())
-		}
-
-        #[weight = 0]
-		pub fn add_new_task(origin,
-		    ref_num: H256,
-		    delegate_tea_id: TeaPubKey,
-		    model_cid: Vec<u8>,
-		    body_cid: Vec<u8>,
-		    payment: BalanceOf<T>)
-		{
-			let sender = ensure_signed(origin)?;
-
-		    // ensure!(Nodes::contains_key(&delegate_tea_id), Error::<T>::NodeNotExist);
-		    // let node = Nodes::get(&delegate_tea_id).unwrap();
-
-            let neg_imbalance = T::Currency::withdraw(&sender,
-		        payment,
-		        WithdrawReasons::except(WithdrawReason::TransactionPayment),
-		        ExistenceRequirement::AllowDeath)?;
-
-            let new_task = Task {
-                ref_num: ref_num.clone(),
-                delegate_tea_id,
-                model_cid,
-                body_cid,
-                payment: neg_imbalance.peek(),
-            };
-
-            Tasks::<T>::insert(&ref_num, &new_task);
-
-            Self::deposit_event(RawEvent::NewTaskAdded(sender, new_task));
-		}
-
-        #[weight = 0]
-		pub fn complete_task(
-		    origin,
-		    ref_num: H256,
-		    winner_tea_id: TeaPubKey,
-		    delegate_sig: Vec<u8>,
-		    result: Vec<u8>,
-		    result_sig: Vec<u8>
-		    ) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
-
-		    // check if (sender, ephemeral_id) exist
-
-            // check if the task exist
-		    ensure!(Tasks::<T>::contains_key(&ref_num), Error::<T>::TaskNotExist);
-		    let task = Tasks::<T>::get(&ref_num).unwrap();
-
-            // check if the task status is in precessing
-
-            // check the delegate signature
-            Self::verify_delegate_sig(task.delegate_tea_id, delegate_sig, winner_tea_id, ref_num)?;
-
-		    // check result signature
-		    Self::verify_result_sig(winner_tea_id, result_sig, &result)?;
-
-            let _positive_imbalance = T::Currency::deposit_creating(&sender, task.payment.clone());
-
-            // task done
-
-            Self::deposit_event(RawEvent::CompleteTask(sender, ref_num, result));
-
-		    Ok(())
 		}
 
         #[weight = 0]
@@ -672,17 +560,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    fn get_task_id(sender: &T::AccountId, task: &Task<BalanceOf<T>>) -> H256 {
-        let random_seed = <pallet_randomness_collective_flip::Module<T>>::random_seed();
-        let payload = (
-            random_seed,
-            sender.clone(),
-            task,
-            <system::Module<T>>::block_number(),
-        );
-        payload.using_encoded(blake2_256).into()
-    }
-
     fn verify_tea_sig(tea_id: TeaPubKey,
                          tea_sig: Vec<u8>,
                          ephemeral_id: TeaPubKey) -> dispatch::DispatchResult {
