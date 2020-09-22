@@ -126,11 +126,12 @@ pub struct Service {
     cap_checker: Cid,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub struct RaResult {
     tea_id: TeaPubKey,
     target_tea_id: TeaPubKey,
     is_pass: bool,
+    target_status: NodeStatus,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -314,12 +315,13 @@ decl_module! {
                 target_node.ra_nodes[index] = (tea_id, false);
                 target_node.status = NodeStatus::Invalid;
             }
-            Nodes::insert(target_tea_id, target_node);
+            Nodes::insert(target_tea_id, &target_node);
 
             let ra_result = RaResult {
                 tea_id,
                 target_tea_id,
                 is_pass,
+                target_status: target_node.status,
             };
             Self::deposit_event(RawEvent::CommitRaResult(sender, ra_result));
 
