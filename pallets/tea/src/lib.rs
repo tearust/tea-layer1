@@ -362,6 +362,8 @@ decl_module! {
             // let index = random % 4;
 
             // select first 4 nodes as ra nodes for dev.
+            // todo: after register bootstrap nodes on layer1, and judge if it is bootstrap node
+            //      updating node profile here, if true then shall have no ra nodes
             let mut count = 0;
             let mut ra_nodes = Vec::new();
             for (tea_id, _) in Nodes::iter() {
