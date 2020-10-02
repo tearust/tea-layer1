@@ -366,9 +366,11 @@ decl_module! {
             //      updating node profile here, if true then shall have no ra nodes
             let mut count = 0;
             let mut ra_nodes = Vec::new();
-            for (tea_id, _) in Nodes::iter() {
-                ra_nodes.push((tea_id, false));
-                count += 1;
+            for (tea_id, node) in Nodes::iter() {
+                if node.status == NodeStatus::Active {
+                    ra_nodes.push((tea_id, false));
+                    count += 1;
+                }
                 if count == 4 {
                     break;
                 }
