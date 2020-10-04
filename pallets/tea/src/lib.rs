@@ -366,15 +366,16 @@ decl_module! {
             //      updating node profile here, if true then shall have no ra nodes
             let mut count = 0;
             let mut ra_nodes = Vec::new();
-            for (tea_id, node) in Nodes::iter() {
-                if node.status == NodeStatus::Active {
-                    ra_nodes.push((tea_id, false));
-                    count += 1;
-                }
-                if count == 4 {
-                    break;
-                }
-            }
+            // todo: comment select ra nodes for now, uncomment me later
+            // for (tea_id, node) in Nodes::iter() {
+            //     if node.status == NodeStatus::Active {
+            //         ra_nodes.push((tea_id, false));
+            //         count += 1;
+            //     }
+            //     if count == 4 {
+            //         break;
+            //     }
+            // }
 
 		    let urls_count = urls.len();
             let node = Node {
@@ -385,7 +386,9 @@ decl_module! {
             	peer_id: peer_id.clone(),
             	create_time: old_node.create_time,
             	ra_nodes: ra_nodes,
-            	status: old_node.status,
+                // todo: set node status to Active for now, uncomment me later
+            	status: NodeStatus::Active,
+            	// status: old_node.status,
             };
             <Nodes>::insert(&tea_id, &node);
 	        EphemeralIds::insert(ephemeral_id, &tea_id);
