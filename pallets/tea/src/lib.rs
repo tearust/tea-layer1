@@ -233,7 +233,7 @@ decl_module! {
 		// this is needed only if you are using events in your pallet
 		fn deposit_event() = default;
 
-        #[weight = 0]
+        #[weight = 100]
 		pub fn add_new_node(origin, tea_id: TeaPubKey) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 
@@ -256,7 +256,7 @@ decl_module! {
             Ok(())
 		}
 
-		#[weight = 0]
+		#[weight = 100]
 		pub fn update_manifest(origin, tea_id: TeaPubKey, manifest_cid: Cid) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
             <Manifest>::insert(tea_id, &manifest_cid);
@@ -270,7 +270,7 @@ decl_module! {
             Ok(())
 		}
 
-		#[weight = 0]
+		#[weight = 100]
 		pub fn remote_attestation(origin,
             tea_id: TeaPubKey,
             target_tea_id: TeaPubKey,
@@ -307,8 +307,8 @@ decl_module! {
                         count += 1;
                     }
                 }
-                // need 3/4 vote at least.
-                if count > 2 {
+                // need 2/4 vote at least.
+                if count > 1 {
                     target_node.status = NodeStatus::Active;
                 }
             } else {
@@ -328,7 +328,7 @@ decl_module! {
             Ok(())
 		}
 
-        #[weight = 0]
+        #[weight = 100]
 		pub fn update_node_profile(origin,
 		    tea_id: TeaPubKey,
 		    ephemeral_id: TeaPubKey,
@@ -366,16 +366,15 @@ decl_module! {
             //      updating node profile here, if true then shall have no ra nodes
             let mut count = 0;
             let mut ra_nodes = Vec::new();
-            // todo: comment select ra nodes for now, uncomment me later
-            // for (tea_id, node) in Nodes::iter() {
-            //     if node.status == NodeStatus::Active {
-            //         ra_nodes.push((tea_id, false));
-            //         count += 1;
-            //     }
-            //     if count == 4 {
-            //         break;
-            //     }
-            // }
+            for (tea_id, node) in Nodes::iter() {
+                if node.status == NodeStatus::Active {
+                    ra_nodes.push((tea_id, false));
+                    count += 1;
+                }
+                if count == 4 {
+                    break;
+                }
+            }
 
 		    let urls_count = urls.len();
             let node = Node {
@@ -386,9 +385,7 @@ decl_module! {
             	peer_id: peer_id.clone(),
             	create_time: old_node.create_time,
             	ra_nodes: ra_nodes,
-                // todo: set node status to Active for now, uncomment me later
-            	status: NodeStatus::Active,
-            	// status: old_node.status,
+            	status: old_node.status,
             };
             <Nodes>::insert(&tea_id, &node);
 	        EphemeralIds::insert(ephemeral_id, &tea_id);
@@ -406,7 +403,7 @@ decl_module! {
             Ok(())
 		}
 
-        #[weight = 0]
+        #[weight = 100]
 		pub fn add_new_data(
 		    origin,
 		    delegator_ephemeral_id: TeaPubKey,
@@ -430,7 +427,7 @@ decl_module! {
             Ok(())
 		}
 
-        #[weight = 0]
+        #[weight = 100]
 		pub fn add_new_service(
 		    origin,
 		    delegator_ephemeral_id: TeaPubKey,
@@ -452,7 +449,7 @@ decl_module! {
             Ok(())
 		}
 
-		#[weight = 0]
+		#[weight = 100]
 		pub fn deposit(
 		    origin,
             delegator_tea_id: TeaPubKey,
@@ -502,7 +499,7 @@ decl_module! {
             Ok(())
 		}
 
-		#[weight = 0]
+		#[weight = 100]
 		pub fn settle_accounts(
 		    origin,
 		    // use Lookup
