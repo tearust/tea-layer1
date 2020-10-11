@@ -1,10 +1,14 @@
-# Substrate Node Template
 
-A new FRAME-based Substrate node, ready for hacking :rocket:
+# TeaRust Blockchain
 
-## Local Development
+Manual steps for Linux-based systems can be found below; you can
+[find more information at substrate.dev](https://substrate.dev/docs/en/knowledgebase/getting-started/#manual-installation).
 
-Follow these steps to prepare a local Substrate development environment :hammer_and_wrench:
+Install Rust:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh
+```
 
 ### Setup
 
@@ -164,3 +168,22 @@ by appending your own. A few useful ones are as follow.
 # Check whether the code is compilable
 ./scripts/docker_run.sh cargo check
 ```
+
+## Initial tea node
+> use ed25519 key pair
+
+1. tea_id: df38cb4f12479041c8e8d238109ef2a150b017f382206e24fee932e637c2db7b
+
+private key: 5579a3c220146f0caaab49b884de505098b89326970b929d781cf4a65445a917df38cb4f12479041c8e8d238109ef2a150b017f382206e24fee932e637c2db7b
+
+2. tea_id: c7e016fad0796bb68594e49a6ef1942cf7e73497e69edb32d19ba2fab3696596
+
+private key: 119c37b9aa65572ad9e24dd49c4f4da5330fe476f3313c560ffc67888f92b758c7e016fad0796bb68594e49a6ef1942cf7e73497e69edb32d19ba2fab3696596
+
+3. tea_id: 2754d7e9c73ced5b302e12464594110850980027f8f83c469e8145eef59220b6
+
+private key: 2b0af8d507eee7175290dad578f734a4936b091a05bda5abe5052a104a5936502754d7e9c73ced5b302e12464594110850980027f8f83c469e8145eef59220b6
+
+4. tea_id: c9380fde1ba795fc656ab08ab4ef4482cf554790fd3abcd4642418ae8fb5fd52
+
+private key: 882a976b9990228c28e407c42c0da4a9beff8979f080c0a5edefc243a0d51b01c9380fde1ba795fc656ab08ab4ef4482cf554790fd3abcd4642418ae8fb5fd52

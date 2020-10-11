@@ -2,7 +2,7 @@
 
 set -e
 
-echo "*** Start Substrate node template ***"
+echo "*** Start tea-layer1 node ***"
 
 cd $(dirname ${BASH_SOURCE[0]})/..
 
