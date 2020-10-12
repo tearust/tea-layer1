@@ -163,7 +163,7 @@ fn testnet_genesis(
 			// Assign network admin rights.
 			key: root_key,
 		}),
-		tea: Some(TeaConfig {
+		pallet_tea: Some(TeaConfig {
 			tpms: vec![
 				(hex!("df38cb4f12479041c8e8d238109ef2a150b017f382206e24fee932e637c2db7b"),
 				 [0u8; 32]),

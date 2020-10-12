@@ -38,16 +38,11 @@ pub use frame_support::{
 	},
 };
 
-<<<<<<< HEAD
 /// Import the template pallet.
 pub use pallet_template;
-=======
-/// Importing a tea pallet
-pub use tea;
 
-/// Importing a template pallet
-pub use template;
->>>>>>> master
+/// Importing a tea pallet
+pub use pallet_tea;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -274,22 +269,18 @@ impl pallet_template::Trait for Runtime {
 	type Event = Event;
 }
 
-<<<<<<< HEAD
-// Create the runtime by composing the FRAME pallets that were previously configured.
-=======
-impl tea::Trait for Runtime {
+impl pallet_tea::Trait for Runtime {
 	type Event = Event;
-	type Currency = balances::Module<Runtime>;
+	type Currency = pallet_balances::Module<Runtime>;
 }
 
->>>>>>> master
+// Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
 		NodeBlock = opaque::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-<<<<<<< HEAD
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
@@ -300,19 +291,7 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the template pallet in the runtime.
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
-=======
-		System: system::{Module, Call, Config, Storage, Event<T>},
-		RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
-		Timestamp: timestamp::{Module, Call, Storage, Inherent},
-		Aura: aura::{Module, Config<T>, Inherent(Timestamp)},
-		Grandpa: grandpa::{Module, Call, Storage, Config, Event},
-		Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
-		TransactionPayment: transaction_payment::{Module, Storage},
-		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
-		// Used for the module template in `./template.rs`
-		TemplateModule: template::{Module, Call, Storage, Event<T>},
-		Tea: tea::{Module, Call, Storage, Event<T>, Config},
->>>>>>> master
+		Tea: pallet_tea::{Module, Call, Storage, Event<T>, Config},
 	}
 );
 
@@ -350,14 +329,14 @@ pub type Executive = frame_executive::Executive<
 >;
 
 impl_runtime_apis! {
-	impl tea::api::TeaApi<Block> for Runtime {
-		fn get_sum() -> u32 {
-            Tea::get_sum()
-        }
-        fn get_node_by_ephemeral_id(id: tea::TeaPubKey) -> Option<tea::Node> {
-        	Tea::get_node_by_ephemeral_id(id)
-        }
-	}
+	// impl tea::api::TeaApi<Block> for Runtime {
+	// 	fn get_sum() -> u32 {
+    //         Tea::get_sum()
+    //     }
+    //     fn get_node_by_ephemeral_id(id: tea::TeaPubKey) -> Option<tea::Node> {
+    //     	Tea::get_node_by_ephemeral_id(id)
+    //     }
+	// }
 
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {

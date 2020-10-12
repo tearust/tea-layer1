@@ -12,7 +12,7 @@
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-use system::ensure_signed;
+use frame_system::ensure_signed;
 use codec::{Decode, Encode};
 use frame_support::{
     debug,
@@ -38,12 +38,12 @@ pub mod api;
 
 /// The pallet's configuration trait.
 pub trait Trait: balances::Trait {
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
     type Currency: Currency<Self::AccountId>;
 }
 
-type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
 pub type TeaPubKey = [u8; 32];
 
@@ -186,7 +186,7 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T>
 	where
-		AccountId = <T as system::Trait>::AccountId,
+		AccountId = <T as frame_system::Trait>::AccountId,
 		Balance = BalanceOf<T>,
 	{
 		NewNodeJoined(AccountId, Node),
@@ -354,7 +354,7 @@ decl_module! {
                 random_seed,
                 sender.clone(),
                 tea_id.clone(),
-                <system::Module<T>>::block_number(),
+                <frame_system::Module<T>>::block_number(),
             );
             let _random: U256 = payload.using_encoded(blake2_256).into();
 
