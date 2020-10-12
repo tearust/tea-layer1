@@ -151,6 +151,8 @@ decl_storage! {
 		    map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
         BootNodes get(fn boot_nodes):
             map hasher(twox_64_concat) TeaPubKey => TeaPubKey;
+        BuildInNodes get(fn buildin_nodes): Vec<TeaPubKey>;
+
 		PeerIds get(fn peer_ids):
 		    map hasher(twox_64_concat) Vec<u8> => Option<TeaPubKey>;
 
@@ -166,6 +168,7 @@ decl_storage! {
 	add_extra_genesis {
 	    config(tpms): Vec<(TeaPubKey, TeaPubKey)>;
 		build(|config: &GenesisConfig| {
+		    let mut buildin_nodes = Vec::new();
 			for (tea_id, ephemeral_id) in config.tpms.iter() {
 				let node = Node {
 				    tea_id: tea_id.clone(),
@@ -177,8 +180,10 @@ decl_storage! {
 				    ra_nodes: Vec::new(),
 				    status: NodeStatus::Active,
 				};
-				Nodes::insert(tea_id, node);
+				Nodes::insert(&tea_id, node);
+				buildin_nodes.push(tea_id);
 			}
+            BuildInNodes::put(buildin_nodes);
 		})
 	}
 }
@@ -361,19 +366,23 @@ decl_module! {
             // todo: use random to generate ra nodes.
             // let index = random % 4;
 
-            // select first 4 nodes as ra nodes for dev.
             // todo: after register bootstrap nodes on layer1, and judge if it is bootstrap node
             //      updating node profile here, if true then shall have no ra nodes
-            let mut count = 0;
+            // let mut count = 0;
             let mut ra_nodes = Vec::new();
-            for (tea_id, node) in Nodes::iter() {
-                if node.status == NodeStatus::Active {
-                    ra_nodes.push((tea_id, false));
-                    count += 1;
-                }
-                if count == 4 {
-                    break;
-                }
+            // for (tea_id, node) in Nodes::iter() {
+            //     if node.status == NodeStatus::Active {
+            //         ra_nodes.push((tea_id, false));
+            //         count += 1;
+            //     }
+            //     if count == 4 {
+            //         break;
+            //     }
+            // }
+
+            // select 4 build in nodes as ra nodes for development.
+            for tea_id in Self::buildin_nodes() {
+                ra_nodes.push((tea_id, false));
             }
 
 		    let urls_count = urls.len();
