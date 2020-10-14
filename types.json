@@ -46,7 +46,7 @@
     "delegatorEphemeralId": "TeaPubKey",
     "delegatorSignature": "Bytes",
     "amount": "Balance",
-    "expiredTime": "u64"
+    "expiredTime": "BlockNumber"
   },
   "Bill": {
     "employer": "AccountId",
@@ -55,7 +55,7 @@
     "errandUuid": "Bytes",
     "errandJsonCid": "Bytes",
     "executorEphemeralId": "TeaPubKey",
-    "expiredTime": "u64",
+    "expiredTime": "BlockNumber",
     "resultCid": "Cid",
     "bills": "Vec<(AccountId, Balance)>"
   },
@@ -71,5 +71,11 @@
     "deploymentId": "Cid",
     "cid": "Cid",
     "capChecker": "Cid"
+  },
+  "RuntimeActivity": {
+    "teaId": "TeaPubKey",
+    "cid": "Cid",
+    "ephemeralId": "TeaPubKey",
+    "updateHeight": "BlockNumber"
   }
 }

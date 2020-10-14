@@ -34,8 +34,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub mod api;
-
 /// The pallet's configuration trait.
 pub trait Trait: balances::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -62,19 +60,19 @@ enum NodeStatus {
 // #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 // #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 // #[cfg_attr(feature = "std", serde(deny_unknown_fields))]
-pub struct Node {
+pub struct Node<BlockNumber> {
     tea_id: TeaPubKey,
     ephemeral_id: TeaPubKey,
     profile_cid: Vec<u8>,
     urls: Vec<Url>,
     peer_id: Vec<u8>,
-    create_time: u64,
+    create_time: BlockNumber,
     ra_nodes: Vec<(TeaPubKey, bool)>,
     status: NodeStatus,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct Deposit<Balance> {
+pub struct Deposit<Balance, BlockNumber> {
     /// Delegator device id.
     delegator_tea_id: TeaPubKey,
     /// Only this delegate node can grant an executor the errand.
@@ -84,18 +82,18 @@ pub struct Deposit<Balance> {
     /// The deposit amount.
     amount: Balance,
     /// Specify the expiration height of the deposit.
-    expire_time: u64,
+    expire_time: BlockNumber,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct Bill<AccountId, Balance> {
+pub struct Bill<AccountId, Balance, BlockNumber> {
     employer: AccountId,
     delegator_tea_id: TeaPubKey,
     delegator_ephemeral_id: TeaPubKey,
     errand_uuid: Vec<u8>,
     errand_json_cid: Cid,
     executor_ephemeral_id: TeaPubKey,
-    expired_time: u64,
+    expired_time: BlockNumber,
     result_cid: Cid,
     bills: Vec<(AccountId, Balance)>,
 }
@@ -140,21 +138,31 @@ pub struct ManifestInfo {
     manifest_cid: Cid,
 }
 
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct RuntimeActivity<BlockNumber> {
+    tea_id: TeaPubKey,
+    cid: Cid,
+    ephemeral_id: TeaPubKey,
+    update_height: BlockNumber,
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
 	    Manifest get(fn manifest):
 	        map hasher(twox_64_concat) TeaPubKey => Option<Cid>;
 
 		Nodes get(fn nodes):
-			map hasher(twox_64_concat) TeaPubKey => Option<Node>;
+			map hasher(twox_64_concat) TeaPubKey => Option<Node<T::BlockNumber>>;
 		EphemeralIds get(fn ephemera_ids):
 		    map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
         BootNodes get(fn boot_nodes):
             map hasher(twox_64_concat) TeaPubKey => TeaPubKey;
         BuildInNodes get(fn buildin_nodes): Vec<TeaPubKey>;
-
 		PeerIds get(fn peer_ids):
 		    map hasher(twox_64_concat) Vec<u8> => Option<TeaPubKey>;
+
+		RuntimeActivities get(fn runtime_activities):
+		    map hasher(twox_64_concat) TeaPubKey => Option<RuntimeActivity<T::BlockNumber>>;
 
 		DataMap get(fn data_map):
 		    map hasher(blake2_128_concat) Cid => Option<Data>;
@@ -162,13 +170,16 @@ decl_storage! {
 		    map hasher(blake2_128_concat) Cid => Option<Service>;
 
 		DepositMap get(fn deposit_map):
-			map hasher(twox_64_concat) (T::AccountId, TeaPubKey) => Option<Deposit<BalanceOf<T>>>;
+			map hasher(twox_64_concat) (T::AccountId, TeaPubKey) =>
+			    Option<Deposit<BalanceOf<T>, T::BlockNumber>>;
 	}
 
 	add_extra_genesis {
 	    config(tpms): Vec<(TeaPubKey, TeaPubKey)>;
 		build(|config: &GenesisConfig| {
 		    let mut buildin_nodes = Vec::new();
+		    let current_block_number = <frame_system::Module<T>>::block_number();
+
 			for (tea_id, ephemeral_id) in config.tpms.iter() {
 				let node = Node {
 				    tea_id: tea_id.clone(),
@@ -176,11 +187,11 @@ decl_storage! {
 				    profile_cid: Vec::new(),
 				    urls: Vec::new(),
 				    peer_id: Vec::new(),
-				    create_time: 0,
+				    create_time: current_block_number,
 				    ra_nodes: Vec::new(),
 				    status: NodeStatus::Active,
 				};
-				Nodes::insert(&tea_id, node);
+				Nodes::<T>::insert(&tea_id, node);
 				buildin_nodes.push(tea_id);
 			}
             BuildInNodes::put(buildin_nodes);
@@ -193,15 +204,17 @@ decl_event!(
 	where
 		AccountId = <T as frame_system::Trait>::AccountId,
 		Balance = BalanceOf<T>,
+		BlockNumber = <T as frame_system::Trait>::BlockNumber,
 	{
-		NewNodeJoined(AccountId, Node),
-		UpdateNodeProfile(AccountId, Node),
+		NewNodeJoined(AccountId, Node<BlockNumber>),
+		UpdateNodeProfile(AccountId, Node<BlockNumber>),
 		NewDataAdded(AccountId, Data),
 		NewServiceAdded(AccountId, Service),
-		NewDepositAdded(AccountId, Deposit<Balance>),
-		SettleAccounts(AccountId, Bill<AccountId, Balance>),
+		NewDepositAdded(AccountId, Deposit<Balance, BlockNumber>),
+		SettleAccounts(AccountId, Bill<AccountId, Balance, BlockNumber>),
 		CommitRaResult(AccountId, RaResult),
 		UpdateManifest(AccountId, ManifestInfo),
+		UpdateRuntimeActivity(AccountId, RuntimeActivity<BlockNumber>),
 	}
 );
 
@@ -210,7 +223,7 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 	    NodeAlreadyExist,
 	    NodeNotExist,
-	    InvalidDelegateSig,
+	    InvalidSig,
 	    InvalidExecutorSig,
 	    InvalidTeaSig,
 	    InvalidExpairTime,
@@ -242,7 +255,8 @@ decl_module! {
 		pub fn add_new_node(origin, tea_id: TeaPubKey) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 
-		    ensure!(!Nodes::contains_key(&tea_id), Error::<T>::NodeAlreadyExist);
+		    ensure!(!Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeAlreadyExist);
+		    let current_block_number = <frame_system::Module<T>>::block_number();
 
             let new_node = Node {
                 tea_id: tea_id.clone(),
@@ -250,12 +264,12 @@ decl_module! {
             	profile_cid: Vec::new(),
             	urls: Vec::new(),
             	peer_id: Vec::new(),
-            	create_time: 0,
+            	create_time: current_block_number,
             	ra_nodes: Vec::new(),
             	status: NodeStatus::Pending,
             };
 
-            <Nodes>::insert(tea_id, &new_node);
+            Nodes::<T>::insert(tea_id, &new_node);
             Self::deposit_event(RawEvent::NewNodeJoined(sender, new_node));
 
             Ok(())
@@ -286,9 +300,9 @@ decl_module! {
 
             // todo: verify signature
 
-		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
-		    ensure!(Nodes::contains_key(&target_tea_id), Error::<T>::NodeNotExist);
-            let mut target_node = Nodes::get(&target_tea_id).unwrap();
+		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
+		    ensure!(Nodes::<T>::contains_key(&target_tea_id), Error::<T>::NodeNotExist);
+            let mut target_node = Nodes::<T>::get(&target_tea_id).unwrap();
             ensure!(target_node.status != NodeStatus::Active, Error::<T>::NodeAlreadyActive);
 
             // make sure tea_id in target ra_nodes vec.
@@ -320,7 +334,7 @@ decl_module! {
                 target_node.ra_nodes[index] = (tea_id, false);
                 target_node.status = NodeStatus::Invalid;
             }
-            Nodes::insert(target_tea_id, &target_node);
+            Nodes::<T>::insert(target_tea_id, &target_node);
 
             let ra_result = RaResult {
                 tea_id,
@@ -344,11 +358,11 @@ decl_module! {
 		) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-		    ensure!(Nodes::contains_key(&tea_id), Error::<T>::NodeNotExist);
+		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
 		    // Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
 
             // remove old node info
-            let old_node = Nodes::get(&tea_id).unwrap();
+            let old_node = Nodes::<T>::get(&tea_id).unwrap();
             BootNodes::remove(old_node.tea_id);
             EphemeralIds::remove(old_node.ephemeral_id);
             PeerIds::remove(old_node.peer_id);
@@ -396,7 +410,7 @@ decl_module! {
             	ra_nodes: ra_nodes,
             	status: old_node.status,
             };
-            <Nodes>::insert(&tea_id, &node);
+            Nodes::<T>::insert(&tea_id, &node);
 	        EphemeralIds::insert(ephemeral_id, &tea_id);
 
             if urls_count > 0 {
@@ -465,7 +479,7 @@ decl_module! {
             delegator_ephemeral_id: TeaPubKey,
             delegator_signature: Vec<u8>,
             amount: BalanceOf<T>,
-            expire_time: u64,
+            expire_time: T::BlockNumber,
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 		    // todo: ensure delegator_tea_id exist
@@ -519,7 +533,7 @@ decl_module! {
             errand_json_cid: Cid,//-
             employer_sig: Vec<u8>,
             executor_ephemeral_id: TeaPubKey,
-            expired_time: u64,
+            expired_time: T::BlockNumber,
             delegate_signature: Vec<u8>,
             result_cid: Cid,
             executor_singature: Vec<u8>,
@@ -571,6 +585,37 @@ decl_module! {
 
             Ok(())
 		}
+
+		#[weight = 100]
+        pub fn update_runtime_activity(
+		    origin,
+            tea_id: TeaPubKey,
+            cid: Cid,
+            ephemeral_id: TeaPubKey,
+            singature: Vec<u8>,
+		) -> dispatch::DispatchResult {
+			let sender = ensure_signed(origin)?;
+		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
+
+            // Verify signature
+            let ed25519_pubkey = ed25519::Public(ephemeral_id);
+            let payload = [&tea_id[..], &cid[..]].concat();
+            ensure!(singature.len() == 64, Error::<T>::InvalidSig);
+            let ed25519_sig = ed25519::Signature::from_slice(&singature[..]);
+            ensure!(sp_io::crypto::ed25519_verify(&ed25519_sig, &payload[..], &ed25519_pubkey),
+                    Error::<T>::InvalidSig);
+
+            let current_block_number = <frame_system::Module<T>>::block_number();
+            let runtime_activity = RuntimeActivity {
+                tea_id,
+                cid,
+                ephemeral_id,
+                update_height: current_block_number,
+            };
+            Self::deposit_event(RawEvent::UpdateRuntimeActivity(sender, runtime_activity));
+
+            Ok(())
+		}
 	}
 }
 
@@ -595,11 +640,11 @@ impl<T: Trait> Module<T> {
         let delegate_tea_id = ed25519::Public(delegate_tea_id);
         let auth_payload = [&winner_tea_id[..], &ref_num[..]].concat();
 
-        ensure!(delegate_sig.len() == 64, Error::<T>::InvalidDelegateSig);
+        ensure!(delegate_sig.len() == 64, Error::<T>::InvalidSig);
         let delegate_sig = ed25519::Signature::from_slice(&delegate_sig[..]);
 
         ensure!(sp_io::crypto::ed25519_verify(&delegate_sig, &auth_payload[..], &delegate_tea_id),
-                Error::<T>::InvalidDelegateSig);
+                Error::<T>::InvalidSig);
 
         Ok(())
     }
@@ -623,7 +668,7 @@ impl<T: Trait> Module<T> {
         100 + 200
     }
 
-    pub fn get_node_by_ephemeral_id(ephemeral_id: TeaPubKey) -> Option<Node> {
+    pub fn get_node_by_ephemeral_id(ephemeral_id: TeaPubKey) -> Option<Node<T::BlockNumber>> {
         let tea_id = Self::ephemera_ids(ephemeral_id);
         debug::info!("get_node_by_ephemeral_id(): {:?}", tea_id);
 
