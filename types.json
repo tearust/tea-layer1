@@ -7,7 +7,7 @@
   "RefNum": "H256",
   "Result": "Bytes",
   "NodeStatus": {
-    "_enum": ["Pending", "Active", "Invalid"]
+    "_enum": ["Pending", "Active", "Inactive", "Invalid"]
   },
   "RaResult": {
     "teaId": "TeaPubKey",
@@ -25,7 +25,8 @@
     "profileCid": "Bytes",
     "urls": "Vec<Url>",
     "peerId": "Bytes",
-    "createTime": "u64",
+    "createTime": "BlockNumber",
+    "updateTime": "BlockNumber",
     "raNodes": "Vec<(TeaPubKey, bool)>",
     "status": "NodeStatus"
   },

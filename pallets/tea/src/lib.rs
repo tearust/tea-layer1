@@ -49,10 +49,13 @@ type Url = Vec<u8>;
 
 type Cid = Vec<u8>;
 
+const RUNTIME_ACTIVITY_THRESHOLD: u32 = 2160;
+
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 enum NodeStatus {
     Pending,
     Active,
+    Inactive,
     Invalid,
 }
 
@@ -67,6 +70,7 @@ pub struct Node<BlockNumber> {
     urls: Vec<Url>,
     peer_id: Vec<u8>,
     create_time: BlockNumber,
+    update_time: BlockNumber,
     ra_nodes: Vec<(TeaPubKey, bool)>,
     status: NodeStatus,
 }
@@ -157,7 +161,8 @@ decl_storage! {
 		    map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
         BootNodes get(fn boot_nodes):
             map hasher(twox_64_concat) TeaPubKey => TeaPubKey;
-        BuildInNodes get(fn buildin_nodes): Vec<TeaPubKey>;
+        BuildInNodes get(fn buildin_nodes):
+            map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
 		PeerIds get(fn peer_ids):
 		    map hasher(twox_64_concat) Vec<u8> => Option<TeaPubKey>;
 
@@ -177,9 +182,6 @@ decl_storage! {
 	add_extra_genesis {
 	    config(tpms): Vec<(TeaPubKey, TeaPubKey)>;
 		build(|config: &GenesisConfig| {
-		    let mut buildin_nodes = Vec::new();
-		    let current_block_number = <frame_system::Module<T>>::block_number();
-
 			for (tea_id, ephemeral_id) in config.tpms.iter() {
 				let node = Node {
 				    tea_id: tea_id.clone(),
@@ -187,14 +189,14 @@ decl_storage! {
 				    profile_cid: Vec::new(),
 				    urls: Vec::new(),
 				    peer_id: Vec::new(),
-				    create_time: current_block_number,
+				    create_time: 0.into(),
+				    update_time: 0.into(),
 				    ra_nodes: Vec::new(),
 				    status: NodeStatus::Active,
 				};
 				Nodes::<T>::insert(&tea_id, node);
-				buildin_nodes.push(tea_id);
+				BuildInNodes::insert(&tea_id, &tea_id);
 			}
-            BuildInNodes::put(buildin_nodes);
 		})
 	}
 }
@@ -265,6 +267,7 @@ decl_module! {
             	urls: Vec::new(),
             	peer_id: Vec::new(),
             	create_time: current_block_number,
+            	update_time: current_block_number,
             	ra_nodes: Vec::new(),
             	status: NodeStatus::Pending,
             };
@@ -395,10 +398,16 @@ decl_module! {
             // }
 
             // select 4 build in nodes as ra nodes for development.
-            for tea_id in Self::buildin_nodes() {
+            for (tea_id, _) in BuildInNodes::iter() {
                 ra_nodes.push((tea_id, false));
             }
 
+            let mut status = NodeStatus::Pending;
+            // if tea_id is one of the build in nodes, recover its status to active.
+            if BuildInNodes::get(tea_id).is_some() {
+                status = NodeStatus::Active;
+            }
+            let current_block_number = <frame_system::Module<T>>::block_number();
 		    let urls_count = urls.len();
             let node = Node {
                 tea_id: tea_id.clone(),
@@ -407,8 +416,9 @@ decl_module! {
             	urls,
             	peer_id: peer_id.clone(),
             	create_time: old_node.create_time,
-            	ra_nodes: ra_nodes,
-            	status: old_node.status,
+            	update_time: current_block_number,
+            	ra_nodes,
+            	status,
             };
             Nodes::<T>::insert(&tea_id, &node);
 	        EphemeralIds::insert(ephemeral_id, &tea_id);
@@ -597,7 +607,7 @@ decl_module! {
 			let sender = ensure_signed(origin)?;
 		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
 
-            // Verify signature
+            // // Verify signature
             let ed25519_pubkey = ed25519::Public(ephemeral_id);
             let payload = [&tea_id[..], &cid[..]].concat();
             ensure!(singature.len() == 64, Error::<T>::InvalidSig);
@@ -612,14 +622,45 @@ decl_module! {
                 ephemeral_id,
                 update_height: current_block_number,
             };
+
+            RuntimeActivities::<T>::insert(&tea_id, &runtime_activity);
             Self::deposit_event(RawEvent::UpdateRuntimeActivity(sender, runtime_activity));
 
             Ok(())
 		}
+
+		fn on_finalize(block_number: T::BlockNumber) {
+            Self::update_runtime_status(block_number);
+        }
 	}
 }
 
 impl<T: Trait> Module<T> {
+    fn update_runtime_status(block_number: T::BlockNumber) {
+        for (tea_id, mut node) in Nodes::<T>::iter() {
+            if BuildInNodes::get(tea_id).is_some() {
+                continue;
+            }
+            if node.status == NodeStatus::Active {
+                if block_number - node.update_time <= RUNTIME_ACTIVITY_THRESHOLD.into() {
+                    continue;
+                }
+                match RuntimeActivities::<T>::get(&tea_id) {
+                    Some(runtime_activity) => {
+                        if block_number - runtime_activity.update_height > RUNTIME_ACTIVITY_THRESHOLD.into() {
+                            node.status = NodeStatus::Inactive;
+                            Nodes::<T>::insert(&tea_id, node);
+                        }
+                    }
+                    None => {
+                        node.status = NodeStatus::Inactive;
+                        Nodes::<T>::insert(&tea_id, node);
+                    }
+                }
+            }
+        }
+    }
+
     fn verify_tea_sig(tea_id: TeaPubKey,
                          tea_sig: Vec<u8>,
                          ephemeral_id: TeaPubKey) -> dispatch::DispatchResult {
