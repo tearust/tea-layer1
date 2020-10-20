@@ -49,7 +49,9 @@ type Url = Vec<u8>;
 
 type Cid = Vec<u8>;
 
-const RUNTIME_ACTIVITY_THRESHOLD: u32 = 2160;
+const RUNTIME_ACTIVITY_THRESHOLD: u32 = 3600;
+const MAX_RA_NODES_COUNT: u32 = 4;
+const MIN_RA_PASSED_THRESHOLD: u32 = 3;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 enum NodeStatus {
@@ -253,6 +255,8 @@ decl_module! {
 		// this is needed only if you are using events in your pallet
 		fn deposit_event() = default;
 
+        const TeaVersion: u32 = 5;
+
         #[weight = 100]
 		pub fn add_new_node(origin, tea_id: TeaPubKey) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
@@ -329,8 +333,8 @@ decl_module! {
                         count += 1;
                     }
                 }
-                // need 2/4 vote at least.
-                if count > 1 {
+                // need 3/4 vote at least for now.
+                if count >= MIN_RA_PASSED_THRESHOLD {
                     target_node.status = NodeStatus::Active;
                 }
             } else {
@@ -379,33 +383,30 @@ decl_module! {
                 <frame_system::Module<T>>::block_number(),
             );
             let _random: U256 = payload.using_encoded(blake2_256).into();
-
             // todo: use random to generate ra nodes.
             // let index = random % 4;
 
-            // todo: after register bootstrap nodes on layer1, and judge if it is bootstrap node
-            //      updating node profile here, if true then shall have no ra nodes
-            // let mut count = 0;
             let mut ra_nodes = Vec::new();
-            // for (tea_id, node) in Nodes::iter() {
-            //     if node.status == NodeStatus::Active {
-            //         ra_nodes.push((tea_id, false));
-            //         count += 1;
-            //     }
-            //     if count == 4 {
-            //         break;
-            //     }
-            // }
-
-            // select 4 build in nodes as ra nodes for development.
-            for (tea_id, _) in BuildInNodes::iter() {
-                ra_nodes.push((tea_id, false));
-            }
-
             let mut status = NodeStatus::Pending;
-            // if tea_id is one of the build in nodes, recover its status to active.
             if BuildInNodes::get(tea_id).is_some() {
+                // if tea_id is one of the build in nodes, set its status to active directly.
                 status = NodeStatus::Active;
+            } else {
+                // select 4 build in nodes as ra nodes.
+                for (tea_id, _) in BuildInNodes::iter() {
+                    ra_nodes.push((tea_id, false));
+                }
+                // select 4 active nodes as ra nodes.
+                // let mut count = 0;
+                // for (tea_id, node) in Nodes::iter() {
+                //     if node.status == NodeStatus::Active {
+                //         ra_nodes.push((tea_id, false));
+                //         count += 1;
+                //     }
+                //     if count == 4 {
+                //         break;
+                //     }
+                // }
             }
             let current_block_number = <frame_system::Module<T>>::block_number();
 		    let urls_count = urls.len();
@@ -638,9 +639,6 @@ decl_module! {
 impl<T: Trait> Module<T> {
     fn update_runtime_status(block_number: T::BlockNumber) {
         for (tea_id, mut node) in Nodes::<T>::iter() {
-            if BuildInNodes::get(tea_id).is_some() {
-                continue;
-            }
             if node.status == NodeStatus::Active {
                 if block_number - node.update_time <= RUNTIME_ACTIVITY_THRESHOLD.into() {
                     continue;
