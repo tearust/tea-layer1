@@ -3,10 +3,10 @@ version: "3.2"
 services:
   build:
     container_name: tea-layer1-build
-    image: paritytech/ci-linux:production
+    image: tearust/layer1-dev-env:0.5
     working_dir: /tearust/tea-layer1
     environment:
-      - CARGO_HOME=/tearust/tea-layer1/docker/.cargo
+      - CARGO_HOME=/tearust/.cargo
     volumes:
       - ../:/tearust
       - type: bind
