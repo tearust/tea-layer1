@@ -7,7 +7,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
 };
 use pallet_balances;
-use system;
+use frame_system as system;
 use frame_support::weights::RuntimeDbWeight;
 
 impl_outer_origin! {
@@ -47,10 +47,11 @@ impl system::Trait for Test {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
-	type ModuleToIndex = ();
+	type PalletInfo = ();
 	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
+	type SystemWeightInfo = ();
 }
 
 parameter_types! {
@@ -63,6 +64,8 @@ impl pallet_balances::Trait for Test {
 	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = ();
 }
 
 impl Trait for Test {

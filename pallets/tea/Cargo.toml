@@ -88,5 +88,6 @@ std = [
     'frame-system/std',
     'sp-std/std',
     'serde',
+    'pallet-balances/std',
 ]
 
