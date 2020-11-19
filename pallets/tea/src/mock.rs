@@ -81,5 +81,14 @@ pub type TeaModule = Module<Test>;
 // This function basically just builds a genesis storage key/value store according to
 // our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+	let mut t = system::GenesisConfig::default().build_storage::<Test>().unwrap();
+
+	let _ = pallet_balances::GenesisConfig::<Test>{
+		balances: vec![
+			(1, 10),
+			(2, 200),
+		],
+	}.assimilate_storage(&mut t).unwrap();
+
+	t.into()
 }
