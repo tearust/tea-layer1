@@ -9,5 +9,6 @@
 .idea
 
 docker/.local
+docker/target_test
 
 tmp
