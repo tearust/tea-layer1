@@ -8,7 +8,6 @@
 
 /// For more guidance on Substrate FRAME, see the example pallet
 /// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
-
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
@@ -22,11 +21,11 @@ use frame_support::{
              Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
-use sp_core::{crypto::{AccountId32,Public}, ed25519, sr25519, H256, U256};
+use sp_core::{crypto::{AccountId32, Public}, ed25519, sr25519, H256, U256};
 use pallet_balances as balances;
 use sp_runtime::traits::{
-        Verify,IdentifyAccount,CheckedAdd,One,Zero,
-    };
+    Verify, IdentifyAccount, CheckedAdd, One, Zero,
+};
 
 #[cfg(test)]
 mod mock;
@@ -45,16 +44,16 @@ type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trai
 
 pub type TeaPubKey = [u8; 32];
 
-type Url = Vec<u8>;
+pub type Url = Vec<u8>;
 
-type Cid = Vec<u8>;
+pub type Cid = Vec<u8>;
 
 const RUNTIME_ACTIVITY_THRESHOLD: u32 = 3600;
 const MAX_RA_NODES_COUNT: u32 = 4;
 const MIN_RA_PASSED_THRESHOLD: u32 = 3;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
-enum NodeStatus {
+pub enum NodeStatus {
     Pending,
     Active,
     Inactive,
@@ -66,90 +65,90 @@ enum NodeStatus {
 // #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 // #[cfg_attr(feature = "std", serde(deny_unknown_fields))]
 pub struct Node<BlockNumber> {
-    tea_id: TeaPubKey,
-    ephemeral_id: TeaPubKey,
-    profile_cid: Vec<u8>,
-    urls: Vec<Url>,
-    peer_id: Vec<u8>,
-    create_time: BlockNumber,
-    update_time: BlockNumber,
-    ra_nodes: Vec<(TeaPubKey, bool)>,
-    status: NodeStatus,
+    pub tea_id: TeaPubKey,
+    pub ephemeral_id: TeaPubKey,
+    pub profile_cid: Vec<u8>,
+    pub urls: Vec<Url>,
+    pub peer_id: Vec<u8>,
+    pub create_time: BlockNumber,
+    pub update_time: BlockNumber,
+    pub ra_nodes: Vec<(TeaPubKey, bool)>,
+    pub status: NodeStatus,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Deposit<Balance, BlockNumber> {
     /// Delegator device id.
-    delegator_tea_id: TeaPubKey,
+    pub delegator_tea_id: TeaPubKey,
     /// Only this delegate node can grant an executor the errand.
-    delegator_ephemeral_id: TeaPubKey,
+    pub delegator_ephemeral_id: TeaPubKey,
     /// The delegator signature used to show that delegator has fulfilled its duties.
-    delegator_signature: Vec<u8>,
+    pub delegator_signature: Vec<u8>,
     /// The deposit amount.
-    amount: Balance,
+    pub amount: Balance,
     /// Specify the expiration height of the deposit.
-    expire_time: BlockNumber,
+    pub expire_time: BlockNumber,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Bill<AccountId, Balance, BlockNumber> {
-    employer: AccountId,
-    delegator_tea_id: TeaPubKey,
-    delegator_ephemeral_id: TeaPubKey,
-    errand_uuid: Vec<u8>,
-    errand_json_cid: Cid,
-    executor_ephemeral_id: TeaPubKey,
-    expired_time: BlockNumber,
-    result_cid: Cid,
-    bills: Vec<(AccountId, Balance)>,
+    pub employer: AccountId,
+    pub delegator_tea_id: TeaPubKey,
+    pub delegator_ephemeral_id: TeaPubKey,
+    pub errand_uuid: Vec<u8>,
+    pub errand_json_cid: Cid,
+    pub executor_ephemeral_id: TeaPubKey,
+    pub expired_time: BlockNumber,
+    pub result_cid: Cid,
+    pub bills: Vec<(AccountId, Balance)>,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Data {
     /// Others can look up layer1 to find out current peer_id
-    delegator_ephemeral_id: TeaPubKey,
+    pub delegator_ephemeral_id: TeaPubKey,
     /// It is the cid of pinner_key_pub
-    deployment_id: Cid,
+    pub deployment_id: Cid,
     /// Cid of encrypted data
-    cid: Cid,
+    pub cid: Cid,
     /// Cid of description including price plan. How much to pay data owner per use
-    description: Cid,
+    pub description: Cid,
     /// Capability checker
-    cap_checker: Cid,
+    pub cap_checker: Cid,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct Service {
     /// Others can look up layer1 to find out current peer_id
-    delegator_ephemeral_id: TeaPubKey,
+    pub delegator_ephemeral_id: TeaPubKey,
     /// It is the cid of pinner_key_pub
-    deployment_id: Cid,
+    pub deployment_id: Cid,
     /// Cid of encrypted data
-    cid: Cid,
+    pub cid: Cid,
     /// Capability checker
-    cap_checker: Cid,
+    pub cap_checker: Cid,
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub struct RaResult {
-    tea_id: TeaPubKey,
-    target_tea_id: TeaPubKey,
-    is_pass: bool,
-    target_status: NodeStatus,
+    pub tea_id: TeaPubKey,
+    pub target_tea_id: TeaPubKey,
+    pub is_pass: bool,
+    pub target_status: NodeStatus,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct ManifestInfo {
-    tea_id: TeaPubKey,
-    manifest_cid: Cid,
+    pub tea_id: TeaPubKey,
+    pub manifest_cid: Cid,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct RuntimeActivity<BlockNumber> {
-    tea_id: TeaPubKey,
-    cid: Cid,
-    ephemeral_id: TeaPubKey,
-    update_height: BlockNumber,
+    pub tea_id: TeaPubKey,
+    pub cid: Cid,
+    pub ephemeral_id: TeaPubKey,
+    pub update_height: BlockNumber,
 }
 
 decl_storage! {
@@ -660,8 +659,8 @@ impl<T: Trait> Module<T> {
     }
 
     fn verify_tea_sig(tea_id: TeaPubKey,
-                         tea_sig: Vec<u8>,
-                         ephemeral_id: TeaPubKey) -> dispatch::DispatchResult {
+                      tea_sig: Vec<u8>,
+                      ephemeral_id: TeaPubKey) -> dispatch::DispatchResult {
         let tea_id = ed25519::Public(tea_id);
         ensure!(tea_sig.len() == 64, Error::<T>::InvalidTeaSig);
 
@@ -714,8 +713,8 @@ impl<T: Trait> Module<T> {
         return match tea_id {
             Some(id) => {
                 Self::nodes(id)
-            },
+            }
             None => None
-        }
+        };
     }
 }
