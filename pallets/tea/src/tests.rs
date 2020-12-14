@@ -482,7 +482,6 @@ fn test_deposit_amount_is_not_enough() {
             hex!("ba9147ba50faca694452db7c458e33a9a0322acbaac24bf35db7bb5165dff3ac");
         let delegator_signature = Vec::new();
         let amount: u64 = 100;
-        let expire_time = 100;
 
         assert_noop!(
             TeaModule::deposit(
@@ -507,7 +506,6 @@ fn test_deposit() {
             hex!("ba9147ba50faca694452db7c458e33a9a0322acbaac24bf35db7bb5165dff3ac");
         let delegator_signature = Vec::new();
         let amount: u64 = 100;
-        let expire_time = 100;
 
         assert_ok!(TeaModule::deposit(
             Origin::signed(2),

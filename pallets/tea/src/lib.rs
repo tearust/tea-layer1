@@ -17,8 +17,8 @@ use frame_support::{
     debug,
     decl_event, decl_module, decl_storage, decl_error, dispatch,
     StorageMap, StorageValue, IterableStorageMap, ensure,
-    traits::{Randomness, Currency, ExistenceRequirement, WithdrawReason, WithdrawReasons,
-             Imbalance}};
+    traits::{Randomness, Currency, ExistenceRequirement,  ExistenceRequirement::AllowDeath,
+             WithdrawReason, WithdrawReasons, Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
 use sp_core::{crypto::{AccountId32, Public}, ed25519, sr25519, H256, U256};
@@ -51,6 +51,7 @@ pub type Cid = Vec<u8>;
 const RUNTIME_ACTIVITY_THRESHOLD: u32 = 3600;
 const MAX_RA_NODES_COUNT: u32 = 4;
 const MIN_RA_PASSED_THRESHOLD: u32 = 3;
+pub const MIN_TRANSFER_ASSET_SIGNATURE_COUNT: usize = 2;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub enum NodeStatus {
@@ -178,6 +179,12 @@ decl_storage! {
 		DepositMap get(fn deposit_map):
 			map hasher(twox_64_concat) (T::AccountId, TeaPubKey) =>
 			    Option<Deposit<BalanceOf<T>, T::BlockNumber>>;
+
+	    TransferAssetTasks get(fn transfer_asset_tasks):
+	        map hasher(twox_64_concat) Cid => Cid;
+
+	    TransferAssetSignatures get(fn transfer_asset_signatures):
+	        map hasher(twox_64_concat) Cid => Vec<T::AccountId>;
 	}
 
 	add_extra_genesis {
@@ -238,6 +245,10 @@ decl_error! {
 	    PaymentOverflow,
 	    NodeAlreadyActive,
 	    NotInRaNodes,
+        AccountIdConvertionError,
+        InvalidToAccount,
+        SenderIsNotBuildInAccount,
+        SenderAlreadySigned,
 	}
 }
 
@@ -629,6 +640,66 @@ decl_module! {
             Ok(())
 		}
 
+		#[weight = 100]
+        pub fn transfer_asset(
+		    origin,
+            from: Cid,
+            to: Cid,
+		) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+		    ensure!(from != to, Error::<T>::InvalidToAccount);
+		    if TransferAssetTasks::contains_key(&from) {
+		        ensure!(TransferAssetTasks::get(&from) == to, Error::<T>::InvalidToAccount);
+		    }
+
+            let mut client_from = T::AccountId::default();
+            let account_from = Self::bytes_to_account(&mut from.as_slice());
+            match account_from {
+                Ok(f) => {
+                    client_from = f
+                }
+                Err(_e) => {
+                    debug::info!("failed to parse client");
+                }
+            }
+            let mut client_to = T::AccountId::default();
+            let account_to = Self::bytes_to_account(&mut from.as_slice());
+            match account_to {
+                Ok(t) => {
+                    client_to = t
+                }
+                Err(_e) => {
+                    debug::info!("failed to parse client");
+                }
+            }
+
+            let account_vec = sender.encode();
+            ensure!(account_vec.len() == 32, Error::<T>::AccountIdConvertionError);
+            let mut tea_id = [0u8; 32];
+            tea_id.copy_from_slice(&account_vec);
+            ensure!(BuildInNodes::get(tea_id).is_some(), Error::<T>::SenderIsNotBuildInAccount);
+
+             if TransferAssetSignatures::<T>::contains_key(&from) {
+                 let mut signatures = TransferAssetSignatures::<T>::get(&from);
+                 for sig in signatures.iter() {
+                    ensure!(&sender != sig, Error::<T>::SenderAlreadySigned);
+                 }
+                 let mut signatures = TransferAssetSignatures::<T>::take(&from);
+                 signatures.push(sender.clone());
+                 TransferAssetSignatures::<T>::insert(&from, signatures.clone());
+
+                 if signatures.len() >= MIN_TRANSFER_ASSET_SIGNATURE_COUNT {
+                    let total_balance = T::Currency::total_balance(&client_from);
+                    T::Currency::transfer(&client_from, &client_to, total_balance, AllowDeath)?;
+                    TransferAssetSignatures::<T>::remove(&from);
+                    TransferAssetTasks::remove(&from);
+                 }
+             } else {
+                 TransferAssetSignatures::<T>::insert(&from, vec![sender.clone()]);
+             }
+             Ok(())
+		}
+
 		fn on_finalize(block_number: T::BlockNumber) {
             Self::update_runtime_status(block_number);
         }
@@ -636,6 +707,16 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+
+    fn bytes_to_account(mut account_bytes: &[u8]) -> Result<T::AccountId, Error<T>> {
+        match T::AccountId::decode(&mut account_bytes) {
+            Ok(client) => {
+                return Ok(client);
+            }
+            Err(_e) => Err(Error::<T>::AccountIdConvertionError),
+        }
+    }
+
     fn update_runtime_status(block_number: T::BlockNumber) {
         for (tea_id, mut node) in Nodes::<T>::iter() {
             if node.status == NodeStatus::Active {
