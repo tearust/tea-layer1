@@ -51,7 +51,8 @@ pub type Cid = Vec<u8>;
 const RUNTIME_ACTIVITY_THRESHOLD: u32 = 3600;
 const MAX_RA_NODES_COUNT: u32 = 4;
 const MIN_RA_PASSED_THRESHOLD: u32 = 3;
-pub const MIN_TRANSFER_ASSET_SIGNATURE_COUNT: usize = 2;
+const MIN_TRANSFER_ASSET_SIGNATURE_COUNT: usize = 2;
+const MAX_TRANSFER_ASSET_TASK_PERIOD: u32 = 100;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub enum NodeStatus {
@@ -152,6 +153,15 @@ pub struct RuntimeActivity<BlockNumber> {
     pub update_height: BlockNumber,
 }
 
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct TransferAssetTask<BlockNumber> {
+    pub from: Cid,
+    pub to: Cid,
+    pub btc_asset: Cid,
+    pub eth_asset: Cid,
+    pub start_height: BlockNumber,
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
 	    Manifest get(fn manifest):
@@ -181,7 +191,7 @@ decl_storage! {
 			    Option<Deposit<BalanceOf<T>, T::BlockNumber>>;
 
 	    TransferAssetTasks get(fn transfer_asset_tasks):
-	        map hasher(twox_64_concat) Cid => Cid;
+	        map hasher(twox_64_concat) Cid => TransferAssetTask<T::BlockNumber>;
 
 	    TransferAssetSignatures get(fn transfer_asset_signatures):
 	        map hasher(twox_64_concat) Cid => Vec<T::AccountId>;
@@ -225,6 +235,9 @@ decl_event!(
 		CommitRaResult(AccountId, RaResult),
 		UpdateManifest(AccountId, ManifestInfo),
 		UpdateRuntimeActivity(AccountId, RuntimeActivity<BlockNumber>),
+		TransferAssetBegin(Cid, TransferAssetTask<BlockNumber>),
+		TransferAssetSign(Cid, AccountId),
+		TransferAssetEnd(Cid, TransferAssetTask<BlockNumber>),
 	}
 );
 
@@ -249,6 +262,7 @@ decl_error! {
         InvalidToAccount,
         SenderIsNotBuildInAccount,
         SenderAlreadySigned,
+        TransferAssetTaskTimeout,
 	}
 }
 
@@ -648,8 +662,11 @@ decl_module! {
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
 		    ensure!(from != to, Error::<T>::InvalidToAccount);
-		    if TransferAssetTasks::contains_key(&from) {
-		        ensure!(TransferAssetTasks::get(&from) == to, Error::<T>::InvalidToAccount);
+		    let current_block_number = <frame_system::Module<T>>::block_number();
+		    if TransferAssetTasks::<T>::contains_key(&from) {
+		        ensure!(TransferAssetTasks::<T>::get(&from).to == to, Error::<T>::InvalidToAccount);
+		        ensure!(TransferAssetTasks::<T>::get(&from).start_height + MAX_TRANSFER_ASSET_TASK_PERIOD.into() >
+		        current_block_number,  Error::<T>::TransferAssetTaskTimeout)
 		    }
 
             let mut client_from = T::AccountId::default();
@@ -680,23 +697,43 @@ decl_module! {
             ensure!(BuildInNodes::get(tea_id).is_some(), Error::<T>::SenderIsNotBuildInAccount);
 
              if TransferAssetSignatures::<T>::contains_key(&from) {
-                 let mut signatures = TransferAssetSignatures::<T>::get(&from);
+                 let signatures = TransferAssetSignatures::<T>::get(&from);
                  for sig in signatures.iter() {
                     ensure!(&sender != sig, Error::<T>::SenderAlreadySigned);
                  }
                  let mut signatures = TransferAssetSignatures::<T>::take(&from);
                  signatures.push(sender.clone());
                  TransferAssetSignatures::<T>::insert(&from, signatures.clone());
+                 Self::deposit_event(RawEvent::TransferAssetSign(from.clone(), sender.clone()));
 
                  if signatures.len() >= MIN_TRANSFER_ASSET_SIGNATURE_COUNT {
+                    // transfer balance
                     let total_balance = T::Currency::total_balance(&client_from);
                     T::Currency::transfer(&client_from, &client_to, total_balance, AllowDeath)?;
                     TransferAssetSignatures::<T>::remove(&from);
-                    TransferAssetTasks::remove(&from);
+                    TransferAssetTasks::<T>::remove(&from);
+
+                    // todo transfer btc and other asset
+
+                    Self::deposit_event(RawEvent::TransferAssetEnd(from.clone(), TransferAssetTasks::<T>::get(&from)));
                  }
              } else {
                  TransferAssetSignatures::<T>::insert(&from, vec![sender.clone()]);
              }
+
+             if !TransferAssetTasks::<T>::contains_key(&from) {
+                // todo add btc and other asset
+                let new_task = TransferAssetTask {
+                    from: from.clone(),
+            	    to: to.clone(),
+            	    btc_asset: Vec::new(),
+            	    eth_asset: Vec::new(),
+            	    start_height: current_block_number,
+                };
+                TransferAssetTasks::<T>::insert(from.clone(), &new_task);
+                Self::deposit_event(RawEvent::TransferAssetBegin(from.clone(), new_task));
+             }
+
              Ok(())
 		}
 

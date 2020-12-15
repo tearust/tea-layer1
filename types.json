@@ -78,5 +78,12 @@
     "cid": "Cid",
     "ephemeralId": "TeaPubKey",
     "updateHeight": "BlockNumber"
+  },
+  "TransferAssetTask": {
+    "from": "Cid",
+    "to": "Cid",
+    "btc_asset": "Cid",
+    "eth_asset": "Cid",
+    "start_height": "BlockNumber"
   }
 }
