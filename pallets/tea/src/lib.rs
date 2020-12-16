@@ -154,11 +154,16 @@ pub struct RuntimeActivity<BlockNumber> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct AccountAsset {
+    pub account_id: Cid,
+    pub btc: Vec<Cid>,
+    pub eth: Vec<Cid>,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct TransferAssetTask<BlockNumber> {
     pub from: Cid,
     pub to: Cid,
-    pub btc_asset: Cid,
-    pub eth_asset: Cid,
     pub start_height: BlockNumber,
 }
 
@@ -195,6 +200,9 @@ decl_storage! {
 
 	    TransferAssetSignatures get(fn transfer_asset_signatures):
 	        map hasher(twox_64_concat) Cid => Vec<T::AccountId>;
+
+	    AccountAssets get(fn account_assets):
+	        map hasher(twox_64_concat) Cid => AccountAsset;
 	}
 
 	add_extra_genesis {
@@ -665,8 +673,12 @@ decl_module! {
 		    let current_block_number = <frame_system::Module<T>>::block_number();
 		    if TransferAssetTasks::<T>::contains_key(&from) {
 		        ensure!(TransferAssetTasks::<T>::get(&from).to == to, Error::<T>::InvalidToAccount);
-		        ensure!(TransferAssetTasks::<T>::get(&from).start_height + MAX_TRANSFER_ASSET_TASK_PERIOD.into() >
-		        current_block_number,  Error::<T>::TransferAssetTaskTimeout)
+		        // if timeout, need to remove the transfer-asset task.
+		        if TransferAssetTasks::<T>::get(&from).start_height +
+		        MAX_TRANSFER_ASSET_TASK_PERIOD.into() < current_block_number {
+		            TransferAssetTasks::<T>::remove(&from);
+		            TransferAssetSignatures::<T>::remove(&from);
+		        }
 		    }
 
             let mut client_from = T::AccountId::default();
@@ -709,11 +721,25 @@ decl_module! {
                  if signatures.len() >= MIN_TRANSFER_ASSET_SIGNATURE_COUNT {
                     // transfer balance
                     let total_balance = T::Currency::total_balance(&client_from);
-                    T::Currency::transfer(&client_from, &client_to, total_balance, AllowDeath)?;
-                    TransferAssetSignatures::<T>::remove(&from);
-                    TransferAssetTasks::<T>::remove(&from);
+                    if total_balance > 0.into() {
+                        T::Currency::transfer(&client_from, &client_to, total_balance, AllowDeath)?;
+                        TransferAssetSignatures::<T>::remove(&from);
+                        TransferAssetTasks::<T>::remove(&from);
+                    }
 
                     // todo transfer btc and other asset
+                    if AccountAssets::contains_key(&from) {
+                        let mut from_account_assets = AccountAssets::take(&from);
+                        if AccountAssets::contains_key(&to) {
+                            let mut to_account_assets = AccountAssets::take(&to);
+                            to_account_assets.btc.append(&mut from_account_assets.btc);
+                            to_account_assets.eth.append(&mut from_account_assets.eth);
+                            AccountAssets::insert(&to, to_account_assets);
+                        } else {
+                            AccountAssets::insert(&to, from_account_assets);
+                        }
+
+                    }
 
                     Self::deposit_event(RawEvent::TransferAssetEnd(from.clone(), TransferAssetTasks::<T>::get(&from)));
                  }
@@ -722,12 +748,9 @@ decl_module! {
              }
 
              if !TransferAssetTasks::<T>::contains_key(&from) {
-                // todo add btc and other asset
                 let new_task = TransferAssetTask {
                     from: from.clone(),
             	    to: to.clone(),
-            	    btc_asset: Vec::new(),
-            	    eth_asset: Vec::new(),
             	    start_height: current_block_number,
                 };
                 TransferAssetTasks::<T>::insert(from.clone(), &new_task);
