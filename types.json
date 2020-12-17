@@ -82,8 +82,11 @@
   "TransferAssetTask": {
     "from": "Cid",
     "to": "Cid",
-    "btc_asset": "Cid",
-    "eth_asset": "Cid",
     "start_height": "BlockNumber"
+  },
+  "AccountAsset": {
+    "account_id": "Cid",
+    "btc": "Vec<Cid>",
+    "eth": "Vec<Cid>"
   }
 }
