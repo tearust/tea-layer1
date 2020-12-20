@@ -48,6 +48,10 @@ pub type Url = Vec<u8>;
 
 pub type Cid = Vec<u8>;
 
+pub type TxData = Vec<u8>;
+
+pub type KeyType = Vec<u8>;
+
 const RUNTIME_ACTIVITY_THRESHOLD: u32 = 3600;
 const MAX_RA_NODES_COUNT: u32 = 4;
 const MIN_RA_PASSED_THRESHOLD: u32 = 3;
@@ -167,6 +171,50 @@ pub struct TransferAssetTask<BlockNumber> {
     pub start_height: BlockNumber,
 }
 
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct TaskPaymentDescription {
+    pub description: Cid,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct KeyGenerationData {
+    /// the key type: btc or eth.
+    pub key_type: Cid,
+    /// the count of public keys to create multi sign transaction
+    pub m: u32,
+    /// split the secret to `n` pieces
+    pub n: u32,
+    /// if have k (k < n) pieces the secret can be recovered
+    pub k: u32,
+    /// tea id of delegator
+    pub delegator_tea_id: TeaPubKey,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct KeyGenerationInfo {
+    pub public_key: Cid,
+    pub deployment_ids: Vec<Cid>,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct KeyGenerationResult {
+    pub task_id: Cid,
+    pub public_keys: Vec<KeyGenerationInfo>,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct SignTxData {
+    pub data_adhoc: Data,
+    pub pks: Vec<TeaPubKey>,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct SignTxResponse {
+    pub task_id: Cid,
+    pub signed_tx: Data,
+    pub payment: TaskPaymentDescription,
+}
+
 decl_storage! {
 	trait Store for Module<T: Trait> as TeaModule {
 	    Manifest get(fn manifest):
@@ -203,6 +251,18 @@ decl_storage! {
 
 	    AccountAssets get(fn account_assets):
 	        map hasher(twox_64_concat) Cid => AccountAsset;
+
+	    GenerateKeySenders get(fn generate_key_senders):
+	       map hasher(blake2_128_concat) T::AccountId => Vec<Cid>;
+
+	    GenerateKeyTasks get(fn generate_key_tasks):
+	       map hasher(blake2_128_concat) Cid => KeyGenerationData;
+
+	    GenerateKeyResults get(fn generate_key_results):
+	       map hasher(blake2_128_concat) Cid => KeyGenerationResult;
+
+	    // SignTxTasks get(fn sign_tx_tasks):
+	    //    map hasher(blake2_128_concat) Cid => ;
 	}
 
 	add_extra_genesis {
@@ -246,6 +306,8 @@ decl_event!(
 		TransferAssetBegin(Cid, TransferAssetTask<BlockNumber>),
 		TransferAssetSign(Cid, AccountId),
 		TransferAssetEnd(Cid, TransferAssetTask<BlockNumber>),
+		GenerateKeyBegin(AccountId, Cid, KeyGenerationData),
+		UpdateGenerateKey(Cid, KeyGenerationResult),
 	}
 );
 
@@ -271,6 +333,10 @@ decl_error! {
         SenderIsNotBuildInAccount,
         SenderAlreadySigned,
         TransferAssetTaskTimeout,
+        KeyGenerationSenderAlreadyExist,
+        KeyGenerationTaskAlreadyExist,
+        KeyGenerationTaskNotExist,
+        KeyGenerationResultExist,
 	}
 }
 
@@ -663,6 +729,77 @@ decl_module! {
 		}
 
 		#[weight = 100]
+		pub fn generate_key(
+		    origin,
+		    task_id: Cid,
+		    delegator_tea_id: TeaPubKey,
+		    key_type: Cid,
+		    public_keys_count: u32,
+		    secret_pieces: u32,
+		    sign_pieces: u32,
+		) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+            ensure!(!GenerateKeyTasks::contains_key(&task_id), Error::<T>::KeyGenerationTaskAlreadyExist);
+
+            let task = KeyGenerationData {
+                key_type: key_type.clone(),
+                m: public_keys_count,
+                n: secret_pieces,
+                k: sign_pieces,
+                delegator_tea_id: delegator_tea_id,
+            };
+            if GenerateKeySenders::<T>::contains_key(&sender) {
+                let mut task_ids = GenerateKeySenders::<T>::take(&sender);
+                task_ids.push(task_id.clone());
+                GenerateKeySenders::<T>::insert(&sender, task_ids);
+            } else {
+                GenerateKeySenders::<T>::insert(&sender, vec![task_id.clone()]);
+            }
+            GenerateKeyTasks::insert(task_id.clone(), task.clone());
+
+            Self::deposit_event(RawEvent::GenerateKeyBegin(sender, task_id, task));
+
+            Ok(())
+		}
+
+		#[weight = 100]
+		pub fn update_generate_key_result(
+		    origin,
+		    task_id: Cid,
+            result: Vec<KeyGenerationInfo>,
+		) -> dispatch::DispatchResult {
+		    let _sender = ensure_signed(origin)?;
+
+            ensure!(GenerateKeyTasks::contains_key(&task_id), Error::<T>::KeyGenerationTaskNotExist);
+            ensure!(!GenerateKeyResults::contains_key(&task_id), Error::<T>::KeyGenerationResultExist);
+
+            let key_generation_result = KeyGenerationResult {
+                task_id: task_id.clone(),
+                public_keys: result,
+            };
+
+            GenerateKeyResults::insert(task_id.clone(), key_generation_result.clone());
+            Self::deposit_event(RawEvent::UpdateGenerateKey(task_id, key_generation_result));
+
+            Ok(())
+		}
+
+		#[weight = 100]
+		pub fn sign_tx(
+		    origin,
+		    data_adhoc: TxData,
+		) -> dispatch::DispatchResult {
+            Ok(())
+		}
+
+		#[weight = 100]
+		pub fn update_sign_tx_result(
+		    origin,
+		) -> dispatch::DispatchResult {
+            Ok(())
+		}
+
+		#[weight = 100]
         pub fn transfer_asset(
 		    origin,
             from: Cid,
@@ -685,20 +822,22 @@ decl_module! {
             let account_from = Self::bytes_to_account(&mut from.as_slice());
             match account_from {
                 Ok(f) => {
-                    client_from = f
+                    client_from = f;
                 }
                 Err(_e) => {
                     debug::info!("failed to parse client");
+                    Err(Error::<T>::AccountIdConvertionError)?
                 }
             }
             let mut client_to = T::AccountId::default();
             let account_to = Self::bytes_to_account(&mut from.as_slice());
             match account_to {
                 Ok(t) => {
-                    client_to = t
+                    client_to = t;
                 }
                 Err(_e) => {
                     debug::info!("failed to parse client");
+                    Err(Error::<T>::AccountIdConvertionError)?
                 }
             }
 
