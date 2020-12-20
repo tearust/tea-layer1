@@ -106,5 +106,14 @@
     "task_id": "Cid",
     "data_adhoc": "KeyGenerationData",
     "public_keys": "Vec<KeyGenerationInfo>"
+  },
+  "SignTransactionData": {
+    "key_task_id": "Cid",
+    "data_adhoc": "TxData",
+    "delegator_tea_id": "TeaPubKey"
+  },
+  "SignTransactionResult": {
+    "task_id": "Cid",
+    "signed_tx": "TxData"
   }
 }

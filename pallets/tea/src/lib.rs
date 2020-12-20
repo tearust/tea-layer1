@@ -172,11 +172,6 @@ pub struct TransferAssetTask<BlockNumber> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct TaskPaymentDescription {
-    pub description: Cid,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct KeyGenerationData {
     /// the key type: btc or eth.
     pub key_type: Cid,
@@ -203,16 +198,19 @@ pub struct KeyGenerationResult {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct SignTxData {
-    pub data_adhoc: Data,
-    pub pks: Vec<TeaPubKey>,
+pub struct SignTransactionData {
+    /// the task id of key generation
+    pub key_task_id: Cid,
+    /// the transaction to be signed
+    pub data_adhoc: TxData,
+    /// tea id of delegator
+    pub delegator_tea_id: TeaPubKey,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct SignTxResponse {
+pub struct SignTransactionResult {
     pub task_id: Cid,
-    pub signed_tx: Data,
-    pub payment: TaskPaymentDescription,
+    pub signed_tx: TxData,
 }
 
 decl_storage! {
@@ -261,8 +259,11 @@ decl_storage! {
 	    GenerateKeyResults get(fn generate_key_results):
 	       map hasher(blake2_128_concat) Cid => KeyGenerationResult;
 
-	    // SignTxTasks get(fn sign_tx_tasks):
-	    //    map hasher(blake2_128_concat) Cid => ;
+	    SignTransactionTasks get(fn sign_transaction_tasks):
+	       map hasher(blake2_128_concat) Cid => SignTransactionData;
+
+	    SignTransactionResults get(fn sign_transaction_results):
+	       map hasher(blake2_128_concat) Cid => SignTransactionResult;
 	}
 
 	add_extra_genesis {
@@ -306,8 +307,10 @@ decl_event!(
 		TransferAssetBegin(Cid, TransferAssetTask<BlockNumber>),
 		TransferAssetSign(Cid, AccountId),
 		TransferAssetEnd(Cid, TransferAssetTask<BlockNumber>),
-		GenerateKeyBegin(AccountId, Cid, KeyGenerationData),
+		GenerateKeyBegan(AccountId, Cid, KeyGenerationData),
 		UpdateGenerateKey(Cid, KeyGenerationResult),
+		SignTransactionBegan(AccountId, Cid, SignTransactionData),
+		UpdateSignTransaction(Cid, SignTransactionResult),
 	}
 );
 
@@ -334,9 +337,13 @@ decl_error! {
         SenderAlreadySigned,
         TransferAssetTaskTimeout,
         KeyGenerationSenderAlreadyExist,
+        KeyGenerationSenderNotExist,
         KeyGenerationTaskAlreadyExist,
         KeyGenerationTaskNotExist,
         KeyGenerationResultExist,
+        SignTransactionTaskAlreadyExist,
+        SignTransactionTaskNotExist,
+        SignTransactionResultExist,
 	}
 }
 
@@ -757,7 +764,7 @@ decl_module! {
             }
             GenerateKeyTasks::insert(task_id.clone(), task.clone());
 
-            Self::deposit_event(RawEvent::GenerateKeyBegin(sender, task_id, task));
+            Self::deposit_event(RawEvent::GenerateKeyBegan(sender, task_id, task));
 
             Ok(())
 		}
@@ -787,15 +794,47 @@ decl_module! {
 		#[weight = 100]
 		pub fn sign_tx(
 		    origin,
+		    task_id: Cid,
+		    key_task_id: Cid,
 		    data_adhoc: TxData,
+		    delegator_tea_id: TeaPubKey,
 		) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+
+            ensure!(GenerateKeySenders::<T>::contains_key(&sender), Error::<T>::KeyGenerationSenderNotExist);
+            ensure!(!SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
+
+            let task = SignTransactionData {
+                key_task_id: key_task_id,
+                data_adhoc: data_adhoc,
+                delegator_tea_id: delegator_tea_id,
+            };
+            SignTransactionTasks::insert(task_id.clone(), task.clone());
+
+            Self::deposit_event(RawEvent::SignTransactionBegan(sender, task_id, task));
+
             Ok(())
 		}
 
 		#[weight = 100]
 		pub fn update_sign_tx_result(
 		    origin,
+		    task_id: Cid,
+            signed_tx: TxData,
 		) -> dispatch::DispatchResult {
+		    let _sender = ensure_signed(origin)?;
+
+            ensure!(SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskNotExist);
+            ensure!(!SignTransactionResults::contains_key(&task_id), Error::<T>::SignTransactionResultExist);
+
+            let sign_transaction_result = SignTransactionResult {
+                task_id: task_id.clone(),
+                signed_tx: signed_tx,
+            };
+
+            SignTransactionResults::insert(task_id.clone(), sign_transaction_result.clone());
+            Self::deposit_event(RawEvent::UpdateSignTransaction(task_id, sign_transaction_result));
+
             Ok(())
 		}
 
