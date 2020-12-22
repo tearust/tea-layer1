@@ -93,19 +93,14 @@
   },
   "KeyGenerationData": {
     "key_type": "KeyType",
-    "m": "u32",
     "n": "u32",
     "k": "u32",
     "delegator_tea_id": "TeaPubKey"
   },
-  "KeyGenerationInfo": {
-    "public_key": "Cid",
-    "deployment_ids": "Vec<Cid>"
-  },
   "KeyGenerationResult": {
     "task_id": "Cid",
-    "data_adhoc": "KeyGenerationData",
-    "public_keys": "Vec<KeyGenerationInfo>"
+    "public_key": "Cid",
+    "deployment_ids": "Vec<Cid>"
   },
   "SignTransactionData": {
     "key_task_id": "Cid",

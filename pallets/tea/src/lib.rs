@@ -175,8 +175,6 @@ pub struct TransferAssetTask<BlockNumber> {
 pub struct KeyGenerationData {
     /// the key type: btc or eth.
     pub key_type: Cid,
-    /// the count of public keys to create multi sign transaction
-    pub m: u32,
     /// split the secret to `n` pieces
     pub n: u32,
     /// if have k (k < n) pieces the secret can be recovered
@@ -186,15 +184,10 @@ pub struct KeyGenerationData {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct KeyGenerationInfo {
-    pub public_key: Cid,
-    pub deployment_ids: Vec<Cid>,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct KeyGenerationResult {
     pub task_id: Cid,
-    pub public_keys: Vec<KeyGenerationInfo>,
+    pub public_key: Cid,
+    pub deployment_ids: Vec<Cid>,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -741,7 +734,6 @@ decl_module! {
 		    task_id: Cid,
 		    delegator_tea_id: TeaPubKey,
 		    key_type: Cid,
-		    public_keys_count: u32,
 		    secret_pieces: u32,
 		    sign_pieces: u32,
 		) -> dispatch::DispatchResult {
@@ -750,7 +742,6 @@ decl_module! {
 
             let task = KeyGenerationData {
                 key_type: key_type.clone(),
-                m: public_keys_count,
                 n: secret_pieces,
                 k: sign_pieces,
                 delegator_tea_id: delegator_tea_id,
@@ -773,7 +764,8 @@ decl_module! {
 		pub fn update_generate_key_result(
 		    origin,
 		    task_id: Cid,
-            result: Vec<KeyGenerationInfo>,
+            public_key: Cid,
+            deployment_ids: Vec<Cid>,
 		) -> dispatch::DispatchResult {
 		    let _sender = ensure_signed(origin)?;
 
@@ -782,7 +774,8 @@ decl_module! {
 
             let key_generation_result = KeyGenerationResult {
                 task_id: task_id.clone(),
-                public_keys: result,
+                public_key: public_key.clone(),
+                deployment_ids: deployment_ids.clone()
             };
 
             GenerateKeyResults::insert(task_id.clone(), key_generation_result.clone());
