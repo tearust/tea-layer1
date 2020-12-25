@@ -300,9 +300,9 @@ decl_event!(
 		TransferAssetBegin(Cid, TransferAssetTask<BlockNumber>),
 		TransferAssetSign(Cid, AccountId),
 		TransferAssetEnd(Cid, TransferAssetTask<BlockNumber>),
-		GenerateKeyBegan(AccountId, Cid, KeyGenerationData),
+		KeyGenerationRequested(AccountId, Cid, KeyGenerationData),
 		UpdateGenerateKey(Cid, KeyGenerationResult),
-		SignTransactionBegan(AccountId, Cid, SignTransactionData),
+		SignTransactionRequested(AccountId, Cid, SignTransactionData),
 		UpdateSignTransaction(Cid, SignTransactionResult),
 	}
 );
@@ -755,7 +755,7 @@ decl_module! {
             }
             GenerateKeyTasks::insert(task_id.clone(), task.clone());
 
-            Self::deposit_event(RawEvent::GenerateKeyBegan(sender, task_id, task));
+            Self::deposit_event(RawEvent::KeyGenerationRequested(sender, task_id, task));
 
             Ok(())
 		}
@@ -804,7 +804,7 @@ decl_module! {
             };
             SignTransactionTasks::insert(task_id.clone(), task.clone());
 
-            Self::deposit_event(RawEvent::SignTransactionBegan(sender, task_id, task));
+            Self::deposit_event(RawEvent::SignTransactionRequested(sender, task_id, task));
 
             Ok(())
 		}
