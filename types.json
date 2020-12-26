@@ -5,6 +5,8 @@
   "Url": "Bytes",
   "Cid": "Bytes",
   "TxData": "Bytes",
+  "ClientPubKey": "Bytes",
+  "Signature": "Bytes",
   "KeyType": "Bytes",
   "RefNum": "H256",
   "Result": "Bytes",
@@ -84,31 +86,36 @@
   "TransferAssetTask": {
     "from": "Cid",
     "to": "Cid",
-    "start_height": "BlockNumber"
+    "startHeight": "BlockNumber"
   },
   "AccountAsset": {
-    "account_id": "Cid",
+    "accountId": "Cid",
     "btc": "Vec<Cid>",
     "eth": "Vec<Cid>"
   },
   "KeyGenerationData": {
-    "key_type": "KeyType",
+    "keyType": "KeyType",
     "n": "u32",
     "k": "u32",
-    "delegator_tea_id": "TeaPubKey"
+    "delegatorTeaId": "TeaPubKey"
   },
   "KeyGenerationResult": {
-    "task_id": "Cid",
-    "public_key": "Cid",
-    "deployment_ids": "Vec<Cid>"
+    "taskId": "Cid",
+    "publicKey": "Cid",
+    "deploymentIds": "Vec<Cid>"
   },
   "SignTransactionData": {
-    "key_task_id": "Cid",
-    "data_adhoc": "TxData",
-    "delegator_tea_id": "TeaPubKey"
+    "keyTaskId": "Cid",
+    "dataAdhoc": "TxData",
+    "delegatorTeaId": "TeaPubKey"
   },
   "SignTransactionResult": {
-    "task_id": "Cid",
+    "taskId": "Cid",
     "signed_tx": "TxData"
+  },
+  "RegistrationApplicationData": {
+  "nonce": "Cid",
+  "nonceSignature": "Signature",
+  "browserPk": "ClientPubKey"
   }
 }

@@ -21,17 +21,21 @@ use frame_support::{
              WithdrawReason, WithdrawReasons, Imbalance}};
 use sp_std::prelude::*;
 use sp_io::hashing::blake2_256;
-use sp_core::{crypto::{AccountId32, Public}, ed25519, sr25519, H256, U256};
+use sp_core::{crypto, crypto::{AccountId32, Public}, ed25519, sr25519, H256, U256};
 use pallet_balances as balances;
 use sp_runtime::traits::{
     Verify, IdentifyAccount, CheckedAdd, One, Zero,
 };
+use sha2::{Sha256, Digest};
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "full_crypto")]
+mod verify;
 
 /// The pallet's configuration trait.
 pub trait Trait: balances::Trait {
@@ -50,7 +54,11 @@ pub type Cid = Vec<u8>;
 
 pub type TxData = Vec<u8>;
 
+pub type Signature = Vec<u8>;
+
 pub type KeyType = Vec<u8>;
+
+pub type ClientPubKey = Vec<u8>;
 
 const RUNTIME_ACTIVITY_THRESHOLD: u32 = 3600;
 const MAX_RA_NODES_COUNT: u32 = 4;
@@ -172,6 +180,13 @@ pub struct TransferAssetTask<BlockNumber> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct RegistrationApplicationData {
+    pub nonce: Cid,
+    pub nonce_signature: Signature,
+    pub browser_pk: ClientPubKey,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct KeyGenerationData {
     /// the key type: btc or eth.
     pub key_type: Cid,
@@ -244,19 +259,33 @@ decl_storage! {
 	        map hasher(twox_64_concat) Cid => AccountAsset;
 
 	    GenerateKeySenders get(fn generate_key_senders):
-	       map hasher(blake2_128_concat) T::AccountId => Vec<Cid>;
+	        map hasher(blake2_128_concat) T::AccountId => Vec<Cid>;
 
 	    GenerateKeyTasks get(fn generate_key_tasks):
-	       map hasher(blake2_128_concat) Cid => KeyGenerationData;
+	        map hasher(blake2_128_concat) Cid => KeyGenerationData;
 
 	    GenerateKeyResults get(fn generate_key_results):
-	       map hasher(blake2_128_concat) Cid => KeyGenerationResult;
+	        map hasher(blake2_128_concat) Cid => KeyGenerationResult;
 
 	    SignTransactionTasks get(fn sign_transaction_tasks):
-	       map hasher(blake2_128_concat) Cid => SignTransactionData;
+	        map hasher(blake2_128_concat) Cid => SignTransactionData;
 
 	    SignTransactionResults get(fn sign_transaction_results):
-	       map hasher(blake2_128_concat) Cid => SignTransactionResult;
+	        map hasher(blake2_128_concat) Cid => SignTransactionResult;
+
+        // Register Gluon wallet account.
+        // Temporary storage
+	    BrowserNonce get(fn browser_nonce):
+	        map hasher(blake2_128_concat) T::AccountId => Cid;
+        AppRegistration get(fn app_nonce):
+            map hasher(blake2_128_concat) T::AccountId => RegistrationApplicationData;
+	    WaitBrowser get(fn wait_broswer):
+	        map hasher(blake2_128_concat) T::AccountId => T::AccountId; // key: browser value: app
+	    // Permanent storage
+        BrowserAppPair get(fn browser_app_pair):
+            map hasher(blake2_128_concat) T::AccountId => T::AccountId;
+        AppBrowserPair get(fn app_browser_pair):
+            map hasher(blake2_128_concat) T::AccountId => T::AccountId;
 	}
 
 	add_extra_genesis {
@@ -304,6 +333,9 @@ decl_event!(
 		UpdateGenerateKey(Cid, KeyGenerationResult),
 		SignTransactionRequested(AccountId, Cid, SignTransactionData),
 		UpdateSignTransaction(Cid, SignTransactionResult),
+		BrowserSendNonce(AccountId, Cid),
+		AppRegistration(AccountId, RegistrationApplicationData),
+		RegistrationApplicationSucceed(AccountId, AccountId),
 	}
 );
 
@@ -315,6 +347,7 @@ decl_error! {
 	    InvalidSig,
 	    InvalidExecutorSig,
 	    InvalidTeaSig,
+	    InvalidNonceSig,
 	    InvalidExpairTime,
 	    InvalidSignatureLength,
 	    DelegatorNotExist,
@@ -329,6 +362,10 @@ decl_error! {
         SenderIsNotBuildInAccount,
         SenderAlreadySigned,
         TransferAssetTaskTimeout,
+        BrowserNonceAlreadyExist,
+        AppRegistrationAlreadyExist,
+        AppBrowserPairAlreadyExist,
+        NonceNotMatch,
         KeyGenerationSenderAlreadyExist,
         KeyGenerationSenderNotExist,
         KeyGenerationTaskAlreadyExist,
@@ -729,6 +766,99 @@ decl_module! {
 		}
 
 		#[weight = 100]
+		pub fn send_nonce(
+		    origin,
+		    hashed_nonce: Cid,
+		) -> dispatch::DispatchResult {
+		    let sender = ensure_signed(origin)?;
+            ensure!(!BrowserNonce::<T>::contains_key(&sender), Error::<T>::BrowserNonceAlreadyExist);
+            ensure!(!BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
+
+            if WaitBrowser::<T>::contains_key(&sender) {
+                let app_account = WaitBrowser::<T>::get(&sender);
+                let nonce = AppRegistration::<T>::get(&app_account).nonce;
+                let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
+                ensure!(hashed_nonce == &app_nonce_hash, Error::<T>::NonceNotMatch);
+
+                // pair finished and fire an event
+                Self::pair_finished(app_account.clone(), sender.clone());
+                Self::deposit_event(RawEvent::RegistrationApplicationSucceed(app_account, sender));
+            } else {
+                // insert into BrowserNonce and fire an event
+                BrowserNonce::<T>::insert(sender.clone(), hashed_nonce.clone());
+                Self::deposit_event(RawEvent::BrowserSendNonce(sender, hashed_nonce));
+            }
+
+            Ok(())
+		}
+
+		#[weight = 100]
+		pub fn send_registration_application(
+		    origin,
+		    nonce: Cid,
+            nonce_signature: Signature,
+            browser_pk: ClientPubKey,
+		) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
+            ensure!(!AppRegistration::<T>::contains_key(&sender), Error::<T>::AppRegistrationAlreadyExist);
+            ensure!(!AppBrowserPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
+            ensure!(nonce_signature.len() == 64, Error::<T>::InvalidNonceSig);
+
+            // check signature of appPubKey
+            let mut app_pk = [0u8; 32];
+            let app_public_key_bytes = Self::account_to_bytes(&sender);
+            match app_public_key_bytes {
+                Ok(p) => {
+                    app_pk = p;
+                }
+                Err(_e) => {
+                    debug::info!("failed to parse app account");
+                    Err(Error::<T>::AccountIdConvertionError)?
+                }
+            }
+            #[cfg(feature = "full_crypto")]
+            ensure!(verify::verify_signature(app_pk, nonce_signature, nonce), Error::<T>::InvalidNonceSig);
+
+            // check browser is not paired.
+            let mut browser_account = T::AccountId::default();
+            let browser = Self::bytes_to_account(&mut browser_pk.as_slice());
+            match browser {
+                Ok(p) => {
+                    browser_account = p;
+                }
+                Err(_e) => {
+                    debug::info!("failed to parse browser pubKey");
+                    Err(Error::<T>::AccountIdConvertionError)?
+                }
+            }
+            ensure!(!BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
+
+            if BrowserNonce::<T>::contains_key(&browser_account) {
+                let browser_nonce_hash = BrowserNonce::<T>::get(&browser_account);
+                let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
+                ensure!(browser_nonce_hash == &app_nonce_hash, Error::<T>::NonceNotMatch);
+
+                // pair finished and fire an event
+                Self::pair_finished(sender.clone(), browser_account.clone());
+                Self::deposit_event(RawEvent::RegistrationApplicationSucceed(sender, browser_account));
+            } else {
+                // insert into AppRegistration
+                let data = RegistrationApplicationData {
+                    nonce: nonce.clone(),
+                    nonce_signature: nonce_signature.clone(),
+                    browser_pk: browser_pk.clone(),
+                };
+                AppRegistration::<T>::insert(sender.clone(), data.clone());
+                WaitBrowser::<T>::insert(browser_account.clone(), sender.clone());
+
+                // fire an event
+                Self::deposit_event(RawEvent::AppRegistration(sender, data));
+            }
+
+            Ok(())
+		}
+
+		#[weight = 100]
 		pub fn generate_key(
 		    origin,
 		    task_id: Cid,
@@ -939,6 +1069,16 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 
+    fn pair_finished(app: T::AccountId, browser: T::AccountId) {
+        // pair succeed, record it into BrowserAppPair and AppBrowserPair and
+        // remove data from AppRegistration and BrowserNonce.
+        BrowserAppPair::<T>::insert(browser.clone(), app.clone());
+        AppBrowserPair::<T>::insert(app.clone(), browser.clone());
+        BrowserNonce::<T>::remove(browser.clone());
+        AppRegistration::<T>::remove(app.clone());
+        WaitBrowser::<T>::remove(browser.clone());
+    }
+
     fn bytes_to_account(mut account_bytes: &[u8]) -> Result<T::AccountId, Error<T>> {
         match T::AccountId::decode(&mut account_bytes) {
             Ok(client) => {
@@ -946,6 +1086,16 @@ impl<T: Trait> Module<T> {
             }
             Err(_e) => Err(Error::<T>::AccountIdConvertionError),
         }
+    }
+
+    fn account_to_bytes(account: &T::AccountId) -> Result<[u8; 32], Error<T>> {
+        let account_vec = account.encode();
+        if account_vec.len() != 32 {
+            return Err(Error::<T>::AccountIdConvertionError);
+        }
+        let mut bytes = [0u8; 32];
+        bytes.copy_from_slice(&account_vec);
+        Ok(bytes)
     }
 
     fn update_runtime_status(block_number: T::BlockNumber) {
@@ -1028,5 +1178,14 @@ impl<T: Trait> Module<T> {
             }
             None => None
         };
+    }
+
+    /// Do a sha2 256-bit hash and return result.
+    pub fn sha2_256(data: &[u8]) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        hasher.input(data);
+        let mut output = [0u8; 32];
+        output.copy_from_slice(&hasher.result());
+        output
     }
 }
