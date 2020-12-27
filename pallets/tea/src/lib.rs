@@ -228,7 +228,6 @@ pub struct KeyGenerationResult {
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct GluonWalletInfo {
-    pub p1: Cid,
     pub p2: Cid,
     pub deployment_ids: Vec<Cid>,
 }
@@ -321,11 +320,14 @@ decl_storage! {
             map hasher(blake2_128_concat) T::AccountId => (Cid, Cid); // value: (nonce hash, task hash)
         WaitBrowserAccount get(fn wait_broswer_account):
             map hasher(blake2_128_concat) T::AccountId => T::AccountId; // key: browser value: app
-        AccountGenerationTasks get(fn generate_account_tasks):
+        AccountGenerationTasks get(fn account_generation_tasks):
             map hasher(blake2_128_concat) T::AccountId => AccountGenerationTask; // key: app, value: task
+        // Intermediate storage to wait for task result
+        AccountGenerationTaskDelegator get(fn account_generation_task_hashes):
+            map hasher(blake2_128_concat) Cid => TeaPubKey; // key: app, value: key type
         // Permanent storage
         GluonWallets get(fn gluon_wallets):
-            map hasher(blake2_128_concat) Cid => GluonWalletInfo; // key: p1
+            map hasher(blake2_128_concat) Cid => GluonWalletInfo; // key: multiSigAccount value
 	}
 
 	add_extra_genesis {
@@ -379,6 +381,7 @@ decl_event!(
 		BrowserAccountGeneration(AccountId, Cid, Cid),
 		AppAccountGeneration(AccountId, Cid, AccountGenerationData),
 		AccountGenrationRequested(AccountId, Cid, AccountGenerationData),
+		GluonWalletGenerated(Cid, Cid, GluonWalletInfo),
 	}
 );
 
@@ -410,15 +413,15 @@ decl_error! {
         AppBrowserPairAlreadyExist,
         NonceNotMatch,
         TaskNotMatch,
+        TaskNotExist,
         KeyGenerationSenderAlreadyExist,
         KeyGenerationSenderNotExist,
         KeyGenerationTaskAlreadyExist,
-        KeyGenerationTaskNotExist,
         KeyGenerationResultExist,
         SignTransactionTaskAlreadyExist,
-        SignTransactionTaskNotExist,
         SignTransactionResultExist,
         AccountGenerationTaskAlreadyExist,
+        GluonWalletsAlreadyExist,
 	}
 }
 
@@ -945,7 +948,7 @@ decl_module! {
 		) -> dispatch::DispatchResult {
 		    let _sender = ensure_signed(origin)?;
 
-            ensure!(GenerateKeyTasks::contains_key(&task_id), Error::<T>::KeyGenerationTaskNotExist);
+            ensure!(GenerateKeyTasks::contains_key(&task_id), Error::<T>::TaskNotExist);
             ensure!(!GenerateKeyResults::contains_key(&task_id), Error::<T>::KeyGenerationResultExist);
 
             let key_generation_result = KeyGenerationResult {
@@ -972,13 +975,14 @@ decl_module! {
 
             if WaitBrowserAccount::<T>::contains_key(&sender) {
                 let app_account = WaitBrowserAccount::<T>::get(&sender);
-                let genration_task = AccountGenerationTasks::<T>::get(&app_account);
-                ensure!(genration_task.nonce_hash == nonce_hash, Error::<T>::NonceNotMatch);
-                ensure!(genration_task.task_hash == task_hash, Error::<T>::NonceNotMatch);
+                let generation_task = AccountGenerationTasks::<T>::get(&app_account);
+                ensure!(generation_task.nonce_hash == nonce_hash, Error::<T>::NonceNotMatch);
+                ensure!(generation_task.task_hash == task_hash, Error::<T>::NonceNotMatch);
 
                 // account generation finished and fire an event
-                Self::account_generation_finished(app_account.clone(), sender.clone());
-                Self::deposit_event(RawEvent::AccountGenrationRequested(app_account, task_hash, genration_task.task));
+                Self::account_generation_request_finished(app_account.clone(), sender.clone(),
+                 task_hash.clone(), generation_task.task.delegator_tea_id.clone());
+                Self::deposit_event(RawEvent::AccountGenrationRequested(app_account, task_hash, generation_task.task));
             } else {
                 // insert into BrowserNonce and fire an event
                 BrowserAccountNonce::<T>::insert(sender.clone(), (nonce_hash.clone(), task_hash.clone()));
@@ -1049,7 +1053,8 @@ decl_module! {
                 ensure!(browser_task_hash == task_hash, Error::<T>::TaskNotMatch);
 
                 // account generation finished and fire an event
-                Self::account_generation_finished(sender.clone(), browser_account.clone());
+                Self::account_generation_request_finished(sender.clone(),
+                 browser_account.clone(), task_hash.to_vec(), delegator_tea_id.clone());
                 Self::deposit_event(RawEvent::AccountGenrationRequested(sender, task_hash.to_vec(), task));
             } else {
                 let task_info = AccountGenerationTask {
@@ -1071,9 +1076,39 @@ decl_module! {
         pub fn update_generate_account_without_p3_result(
 	        origin,
 	        task_id: Cid,
+	        p2: Cid,
             p2_deployment_ids: Vec<Cid>,
+            multiSigAccount: Cid,
         )-> dispatch::DispatchResult {
-            // todo complete me
+            let sender = ensure_signed(origin)?;
+            ensure!(AccountGenerationTaskDelegator::contains_key(&task_id), Error::<T>::TaskNotExist);
+            ensure!(!GluonWallets::contains_key(&multiSigAccount), Error::<T>::GluonWalletsAlreadyExist);
+
+            let mut delegator = [0u8; 32];
+            let public_key_bytes = Self::account_to_bytes(&sender);
+            match public_key_bytes {
+                Ok(p) => {
+                    delegator = p;
+                }
+                Err(_e) => {
+                    debug::info!("failed to parse account");
+                    Err(Error::<T>::AccountIdConvertionError)?
+                }
+            }
+            let history_delegator = AccountGenerationTaskDelegator::get(&task_id);
+            // todo if need check sender is delegator?
+            ensure!(delegator == history_delegator, Error::<T>::InvalidSig);
+
+
+            let gluon_wallet_info = GluonWalletInfo {
+                p2: p2.clone(),
+                deployment_ids: p2_deployment_ids.clone()
+            };
+
+            GluonWallets::insert(multiSigAccount.clone(), gluon_wallet_info.clone());
+            Self::deposit_event(RawEvent::GluonWalletGenerated(task_id, multiSigAccount, gluon_wallet_info));
+
+            Ok(())
         }
 
 		#[weight = 100]
@@ -1109,7 +1144,7 @@ decl_module! {
 		) -> dispatch::DispatchResult {
 		    let _sender = ensure_signed(origin)?;
 
-            ensure!(SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskNotExist);
+            ensure!(SignTransactionTasks::contains_key(&task_id), Error::<T>::TaskNotExist);
             ensure!(!SignTransactionResults::contains_key(&task_id), Error::<T>::SignTransactionResultExist);
 
             let sign_transaction_result = SignTransactionResult {
@@ -1231,7 +1266,9 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 
-    fn account_generation_finished(app: T::AccountId, browser: T::AccountId) {
+    fn account_generation_request_finished(app: T::AccountId, browser: T::AccountId, task_hash: Cid, delegator_tea_id: TeaPubKey) {
+        AccountGenerationTaskDelegator::insert(&task_hash, delegator_tea_id);
+
         BrowserAccountNonce::<T>::remove(browser.clone());
         WaitBrowserAccount::<T>::remove(browser);
         AccountGenerationTasks::<T>::remove(app);
