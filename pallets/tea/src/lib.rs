@@ -181,7 +181,7 @@ pub struct TransferAssetTask<BlockNumber> {
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct RegistrationApplicationData {
-    pub nonce: Cid,
+    pub nonce_hash: Cid,
     pub nonce_signature: Signature,
     pub browser_pk: ClientPubKey,
 }
@@ -776,9 +776,8 @@ decl_module! {
 
             if WaitBrowser::<T>::contains_key(&sender) {
                 let app_account = WaitBrowser::<T>::get(&sender);
-                let nonce = AppRegistration::<T>::get(&app_account).nonce;
-                let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
-                ensure!(hashed_nonce == &app_nonce_hash, Error::<T>::NonceNotMatch);
+                let nonce = AppRegistration::<T>::get(&app_account).nonce_hash;
+                ensure!(hashed_nonce == nonce, Error::<T>::NonceNotMatch);
 
                 // pair finished and fire an event
                 Self::pair_finished(app_account.clone(), sender.clone());
@@ -833,10 +832,10 @@ decl_module! {
             }
             ensure!(!BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
 
+            let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
             if BrowserNonce::<T>::contains_key(&browser_account) {
                 let browser_nonce_hash = BrowserNonce::<T>::get(&browser_account);
-                let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
-                ensure!(browser_nonce_hash == &app_nonce_hash, Error::<T>::NonceNotMatch);
+                ensure!(browser_nonce_hash == app_nonce_hash, Error::<T>::NonceNotMatch);
 
                 // pair finished and fire an event
                 Self::pair_finished(sender.clone(), browser_account.clone());
@@ -844,7 +843,7 @@ decl_module! {
             } else {
                 // insert into AppRegistration
                 let data = RegistrationApplicationData {
-                    nonce: nonce.clone(),
+                    nonce_hash: app_nonce_hash.to_vec(),
                     nonce_signature: nonce_signature.clone(),
                     browser_pk: browser_pk.clone(),
                 };

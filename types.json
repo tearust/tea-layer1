@@ -114,7 +114,7 @@
     "signed_tx": "TxData"
   },
   "RegistrationApplicationData": {
-  "nonce": "Cid",
+  "nonceHash": "Cid",
   "nonceSignature": "Signature",
   "browserPk": "ClientPubKey"
   }
