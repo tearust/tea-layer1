@@ -199,9 +199,37 @@ pub struct KeyGenerationData {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct AccountGenerationData {
+    /// the key type: btc or eth.
+    pub key_type: Cid,
+    /// split the secret to `n` pieces
+    pub n: u32,
+    /// if have k (k < n) pieces the secret can be recovered
+    pub k: u32,
+    /// tea id of delegator
+    pub delegator_tea_id: TeaPubKey,
+    /// p1 public key
+    pub p1: Cid,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct AccountGenerationTask {
+    pub nonce_hash: Cid,
+    pub task_hash: Cid,
+    pub task: AccountGenerationData,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct KeyGenerationResult {
     pub task_id: Cid,
     pub public_key: Cid,
+    pub deployment_ids: Vec<Cid>,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct GluonWalletInfo {
+    pub p1: Cid,
+    pub p2: Cid,
     pub deployment_ids: Vec<Cid>,
 }
 
@@ -286,6 +314,18 @@ decl_storage! {
             map hasher(blake2_128_concat) T::AccountId => T::AccountId;
         AppBrowserPair get(fn app_browser_pair):
             map hasher(blake2_128_concat) T::AccountId => T::AccountId;
+
+        // Generate BTC 2/3 MultiSig Account
+        // Temporary storage
+        BrowserAccountNonce get(fn browser_account_nonce):
+            map hasher(blake2_128_concat) T::AccountId => (Cid, Cid); // value: (nonce hash, task hash)
+        WaitBrowserAccount get(fn wait_broswer_account):
+            map hasher(blake2_128_concat) T::AccountId => T::AccountId; // key: browser value: app
+        AccountGenerationTasks get(fn generate_account_tasks):
+            map hasher(blake2_128_concat) T::AccountId => AccountGenerationTask; // key: app, value: task
+        // Permanent storage
+        GluonWallets get(fn gluon_wallets):
+            map hasher(blake2_128_concat) Cid => GluonWalletInfo; // key: p1
 	}
 
 	add_extra_genesis {
@@ -336,6 +376,9 @@ decl_event!(
 		BrowserSendNonce(AccountId, Cid),
 		AppRegistration(AccountId, RegistrationApplicationData),
 		RegistrationApplicationSucceed(AccountId, AccountId),
+		BrowserAccountGeneration(AccountId, Cid, Cid),
+		AppAccountGeneration(AccountId, Cid, AccountGenerationData),
+		AccountGenrationRequested(AccountId, Cid, AccountGenerationData),
 	}
 );
 
@@ -366,6 +409,7 @@ decl_error! {
         AppRegistrationAlreadyExist,
         AppBrowserPairAlreadyExist,
         NonceNotMatch,
+        TaskNotMatch,
         KeyGenerationSenderAlreadyExist,
         KeyGenerationSenderNotExist,
         KeyGenerationTaskAlreadyExist,
@@ -374,6 +418,7 @@ decl_error! {
         SignTransactionTaskAlreadyExist,
         SignTransactionTaskNotExist,
         SignTransactionResultExist,
+        AccountGenerationTaskAlreadyExist,
 	}
 }
 
@@ -768,24 +813,25 @@ decl_module! {
 		#[weight = 100]
 		pub fn send_nonce(
 		    origin,
-		    hashed_nonce: Cid,
+		    nonce_hash: Cid,
 		) -> dispatch::DispatchResult {
+            // todo add logic of timeout
 		    let sender = ensure_signed(origin)?;
             ensure!(!BrowserNonce::<T>::contains_key(&sender), Error::<T>::BrowserNonceAlreadyExist);
             ensure!(!BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
 
             if WaitBrowser::<T>::contains_key(&sender) {
                 let app_account = WaitBrowser::<T>::get(&sender);
-                let nonce = AppRegistration::<T>::get(&app_account).nonce_hash;
-                ensure!(hashed_nonce == nonce, Error::<T>::NonceNotMatch);
+                let app_nonce_hash = AppRegistration::<T>::get(&app_account).nonce_hash;
+                ensure!(nonce_hash == app_nonce_hash, Error::<T>::NonceNotMatch);
 
                 // pair finished and fire an event
                 Self::pair_finished(app_account.clone(), sender.clone());
                 Self::deposit_event(RawEvent::RegistrationApplicationSucceed(app_account, sender));
             } else {
                 // insert into BrowserNonce and fire an event
-                BrowserNonce::<T>::insert(sender.clone(), hashed_nonce.clone());
-                Self::deposit_event(RawEvent::BrowserSendNonce(sender, hashed_nonce));
+                BrowserNonce::<T>::insert(sender.clone(), nonce_hash.clone());
+                Self::deposit_event(RawEvent::BrowserSendNonce(sender, nonce_hash));
             }
 
             Ok(())
@@ -798,6 +844,7 @@ decl_module! {
             nonce_signature: Signature,
             browser_pk: ClientPubKey,
 		) -> dispatch::DispatchResult {
+            // todo add logic of timeout
             let sender = ensure_signed(origin)?;
             ensure!(!AppRegistration::<T>::contains_key(&sender), Error::<T>::AppRegistrationAlreadyExist);
             ensure!(!AppBrowserPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
@@ -912,6 +959,122 @@ decl_module! {
 
             Ok(())
 		}
+
+        #[weight = 100]
+        pub fn browser_generate_account(
+            origin,
+            nonce_hash: Cid,
+            task_hash: Cid,
+        ) -> dispatch::DispatchResult {
+            // todo add logic of timeout
+            let sender = ensure_signed(origin)?;
+            ensure!(!BrowserAccountNonce::<T>::contains_key(&sender), Error::<T>::BrowserNonceAlreadyExist);
+
+            if WaitBrowserAccount::<T>::contains_key(&sender) {
+                let app_account = WaitBrowserAccount::<T>::get(&sender);
+                let genration_task = AccountGenerationTasks::<T>::get(&app_account);
+                ensure!(genration_task.nonce_hash == nonce_hash, Error::<T>::NonceNotMatch);
+                ensure!(genration_task.task_hash == task_hash, Error::<T>::NonceNotMatch);
+
+                // account generation finished and fire an event
+                Self::account_generation_finished(app_account.clone(), sender.clone());
+                Self::deposit_event(RawEvent::AccountGenrationRequested(app_account, task_hash, genration_task.task));
+            } else {
+                // insert into BrowserNonce and fire an event
+                BrowserAccountNonce::<T>::insert(sender.clone(), (nonce_hash.clone(), task_hash.clone()));
+                Self::deposit_event(RawEvent::BrowserAccountGeneration(sender, nonce_hash, task_hash));
+            }
+
+            Ok(())
+        }
+
+        #[weight = 100]
+        pub fn generate_account_without_p3 (
+           origin,
+           nonce: Cid,
+           nonce_signature: Cid,
+           delegator_tea_id: TeaPubKey,
+           key_type: Cid,
+           p1: Cid,
+           p2_n: u32,
+           p2_k: u32,
+           browser_pk: ClientPubKey,
+        ) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
+            ensure!(!AccountGenerationTasks::<T>::contains_key(&sender), Error::<T>::AccountGenerationTaskAlreadyExist);
+            ensure!(nonce_signature.len() == 64, Error::<T>::InvalidNonceSig);
+
+            // check signature of appPubKey
+            let mut app_pk = [0u8; 32];
+            let app_public_key_bytes = Self::account_to_bytes(&sender);
+            match app_public_key_bytes {
+                Ok(p) => {
+                    app_pk = p;
+                }
+                Err(_e) => {
+                    debug::info!("failed to parse app account");
+                    Err(Error::<T>::AccountIdConvertionError)?
+                }
+            }
+            #[cfg(feature = "full_crypto")]
+            ensure!(verify::verify_signature(app_pk, nonce_signature, nonce), Error::<T>::InvalidNonceSig);
+
+            // check task hash
+            let task = AccountGenerationData {
+                key_type: key_type.clone(),
+                n: p2_n,
+                k: p2_k,
+                delegator_tea_id: delegator_tea_id,
+                p1: p1,
+            };
+            let task_data = task.encode();
+            let task_hash = Self::sha2_256(&task_data);
+            let mut browser_account = T::AccountId::default();
+            let browser = Self::bytes_to_account(&mut browser_pk.as_slice());
+            match browser {
+                Ok(p) => {
+                    browser_account = p;
+                }
+                Err(_e) => {
+                    debug::info!("failed to parse browser pubKey");
+                    Err(Error::<T>::AccountIdConvertionError)?
+                }
+            }
+
+            let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
+            if BrowserAccountNonce::<T>::contains_key(&sender) {
+                let browser_nonce_hash = BrowserNonce::<T>::get(&browser_account);
+                let (browser_nonce_hash, browser_task_hash) = BrowserAccountNonce::<T>::get(&browser_account);
+                ensure!(browser_nonce_hash == app_nonce_hash, Error::<T>::NonceNotMatch);
+                ensure!(browser_task_hash == task_hash, Error::<T>::TaskNotMatch);
+
+                // account generation finished and fire an event
+                Self::account_generation_finished(sender.clone(), browser_account.clone());
+                Self::deposit_event(RawEvent::AccountGenrationRequested(sender, task_hash.to_vec(), task));
+            } else {
+                let task_info = AccountGenerationTask {
+                    nonce_hash: app_nonce_hash.to_vec(),
+                    task_hash: task_hash.to_vec(),
+                    task: task,
+                };
+                AccountGenerationTasks::<T>::insert(sender.clone(), task_info.clone());
+                WaitBrowserAccount::<T>::insert(browser_account.clone(), sender.clone());
+
+                // fire an event
+                Self::deposit_event(RawEvent::AppAccountGeneration(sender, task_hash.to_vec(), task_info.task));
+            }
+
+            Ok(())
+        }
+
+		#[weight = 100]
+        pub fn update_generate_account_without_p3_result(
+	        origin,
+	        task_id: Cid,
+            p2_deployment_ids: Vec<Cid>,
+        )-> dispatch::DispatchResult {
+            // todo complete me
+        }
 
 		#[weight = 100]
 		pub fn sign_tx(
@@ -1068,14 +1231,20 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 
+    fn account_generation_finished(app: T::AccountId, browser: T::AccountId) {
+        BrowserAccountNonce::<T>::remove(browser.clone());
+        WaitBrowserAccount::<T>::remove(browser);
+        AccountGenerationTasks::<T>::remove(app);
+    }
+
     fn pair_finished(app: T::AccountId, browser: T::AccountId) {
         // pair succeed, record it into BrowserAppPair and AppBrowserPair and
         // remove data from AppRegistration and BrowserNonce.
         BrowserAppPair::<T>::insert(browser.clone(), app.clone());
         AppBrowserPair::<T>::insert(app.clone(), browser.clone());
         BrowserNonce::<T>::remove(browser.clone());
-        AppRegistration::<T>::remove(app.clone());
-        WaitBrowser::<T>::remove(browser.clone());
+        AppRegistration::<T>::remove(app);
+        WaitBrowser::<T>::remove(browser);
     }
 
     fn bytes_to_account(mut account_bytes: &[u8]) -> Result<T::AccountId, Error<T>> {
