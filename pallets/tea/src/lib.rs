@@ -180,18 +180,6 @@ pub struct TransferAssetTask<BlockNumber> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct KeyGenerationData {
-    /// the key type: btc or eth.
-    pub key_type: Cid,
-    /// split the secret to `n` pieces
-    pub n: u32,
-    /// if have k (k < n) pieces the secret can be recovered
-    pub k: u32,
-    /// tea id of delegator
-    pub delegator_tea_id: TeaPubKey,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct AccountGenerationData {
     /// the key type: btc or eth.
     pub key_type: Cid,
@@ -203,13 +191,6 @@ pub struct AccountGenerationData {
     pub delegator_tea_id: TeaPubKey,
     /// p1 public key
     pub p1: Cid,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct KeyGenerationResult {
-    pub task_id: Cid,
-    pub public_key: Cid,
-    pub deployment_ids: Vec<Cid>,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -271,15 +252,6 @@ decl_storage! {
 
 	    AccountAssets get(fn account_assets):
 	        map hasher(twox_64_concat) Cid => AccountAsset;
-
-	    GenerateKeySenders get(fn generate_key_senders):
-	        map hasher(blake2_128_concat) T::AccountId => Vec<Cid>;
-
-	    GenerateKeyTasks get(fn generate_key_tasks):
-	        map hasher(blake2_128_concat) Cid => KeyGenerationData;
-
-	    GenerateKeyResults get(fn generate_key_results):
-	        map hasher(blake2_128_concat) Cid => KeyGenerationResult;
 
 	    SignTransactionTasks get(fn sign_transaction_tasks):
 	        map hasher(blake2_128_concat) Cid => SignTransactionData;
@@ -350,8 +322,6 @@ decl_event!(
 		TransferAssetBegin(Cid, TransferAssetTask<BlockNumber>),
 		TransferAssetSign(Cid, AccountId),
 		TransferAssetEnd(Cid, TransferAssetTask<BlockNumber>),
-		KeyGenerationRequested(AccountId, Cid, KeyGenerationData),
-		UpdateGenerateKey(Cid, KeyGenerationResult),
 		SignTransactionRequested(AccountId, Cid, SignTransactionData),
 		UpdateSignTransaction(Cid, SignTransactionResult),
 		BrowserSendNonce(AccountId, Cid),
@@ -865,62 +835,6 @@ decl_module! {
             Ok(())
 		}
 
-		#[weight = 100]
-		pub fn generate_key(
-		    origin,
-		    task_id: Cid,
-		    delegator_tea_id: TeaPubKey,
-		    key_type: Cid,
-		    secret_pieces: u32,
-		    sign_pieces: u32,
-		) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
-            ensure!(!GenerateKeyTasks::contains_key(&task_id), Error::<T>::KeyGenerationTaskAlreadyExist);
-
-            let task = KeyGenerationData {
-                key_type: key_type.clone(),
-                n: secret_pieces,
-                k: sign_pieces,
-                delegator_tea_id: delegator_tea_id,
-            };
-            if GenerateKeySenders::<T>::contains_key(&sender) {
-                let mut task_ids = GenerateKeySenders::<T>::take(&sender);
-                task_ids.push(task_id.clone());
-                GenerateKeySenders::<T>::insert(&sender, task_ids);
-            } else {
-                GenerateKeySenders::<T>::insert(&sender, vec![task_id.clone()]);
-            }
-            GenerateKeyTasks::insert(task_id.clone(), task.clone());
-
-            Self::deposit_event(RawEvent::KeyGenerationRequested(sender, task_id, task));
-
-            Ok(())
-		}
-
-		#[weight = 100]
-		pub fn update_generate_key_result(
-		    origin,
-		    task_id: Cid,
-            public_key: Cid,
-            deployment_ids: Vec<Cid>,
-		) -> dispatch::DispatchResult {
-		    let _sender = ensure_signed(origin)?;
-
-            ensure!(GenerateKeyTasks::contains_key(&task_id), Error::<T>::TaskNotExist);
-            ensure!(!GenerateKeyResults::contains_key(&task_id), Error::<T>::KeyGenerationResultExist);
-
-            let key_generation_result = KeyGenerationResult {
-                task_id: task_id.clone(),
-                public_key: public_key.clone(),
-                deployment_ids: deployment_ids.clone()
-            };
-
-            GenerateKeyResults::insert(task_id.clone(), key_generation_result.clone());
-            Self::deposit_event(RawEvent::UpdateGenerateKey(task_id, key_generation_result));
-
-            Ok(())
-		}
-
         #[weight = 100]
         pub fn browser_generate_account(
             origin,
@@ -1053,19 +967,19 @@ decl_module! {
 		    data_adhoc: TxData,
 		    delegator_tea_id: TeaPubKey,
 		) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
-
-            ensure!(GenerateKeySenders::<T>::contains_key(&sender), Error::<T>::KeyGenerationSenderNotExist);
-            ensure!(!SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
-
-            let task = SignTransactionData {
-                key_task_id: key_task_id,
-                data_adhoc: data_adhoc,
-                delegator_tea_id: delegator_tea_id,
-            };
-            SignTransactionTasks::insert(task_id.clone(), task.clone());
-
-            Self::deposit_event(RawEvent::SignTransactionRequested(sender, task_id, task));
+		    // let sender = ensure_signed(origin)?;
+            //
+            // ensure!(GenerateKeySenders::<T>::contains_key(&sender), Error::<T>::KeyGenerationSenderNotExist);
+            // ensure!(!SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
+            //
+            // let task = SignTransactionData {
+            //     key_task_id: key_task_id,
+            //     data_adhoc: data_adhoc,
+            //     delegator_tea_id: delegator_tea_id,
+            // };
+            // SignTransactionTasks::insert(task_id.clone(), task.clone());
+            //
+            // Self::deposit_event(RawEvent::SignTransactionRequested(sender, task_id, task));
 
             Ok(())
 		}
@@ -1076,18 +990,18 @@ decl_module! {
 		    task_id: Cid,
             signed_tx: TxData,
 		) -> dispatch::DispatchResult {
-		    let _sender = ensure_signed(origin)?;
-
-            ensure!(SignTransactionTasks::contains_key(&task_id), Error::<T>::TaskNotExist);
-            ensure!(!SignTransactionResults::contains_key(&task_id), Error::<T>::SignTransactionResultExist);
-
-            let sign_transaction_result = SignTransactionResult {
-                task_id: task_id.clone(),
-                signed_tx: signed_tx,
-            };
-
-            SignTransactionResults::insert(task_id.clone(), sign_transaction_result.clone());
-            Self::deposit_event(RawEvent::UpdateSignTransaction(task_id, sign_transaction_result));
+		    // let _sender = ensure_signed(origin)?;
+            //
+            // ensure!(SignTransactionTasks::contains_key(&task_id), Error::<T>::TaskNotExist);
+            // ensure!(!SignTransactionResults::contains_key(&task_id), Error::<T>::SignTransactionResultExist);
+            //
+            // let sign_transaction_result = SignTransactionResult {
+            //     task_id: task_id.clone(),
+            //     signed_tx: signed_tx,
+            // };
+            //
+            // SignTransactionResults::insert(task_id.clone(), sign_transaction_result.clone());
+            // Self::deposit_event(RawEvent::UpdateSignTransaction(task_id, sign_transaction_result));
 
             Ok(())
 		}

@@ -93,17 +93,6 @@
     "btc": "Vec<Cid>",
     "eth": "Vec<Cid>"
   },
-  "KeyGenerationData": {
-    "keyType": "KeyType",
-    "n": "u32",
-    "k": "u32",
-    "delegatorTeaId": "TeaPubKey"
-  },
-  "KeyGenerationResult": {
-    "taskId": "Cid",
-    "publicKey": "Cid",
-    "deploymentIds": "Vec<Cid>"
-  },
   "SignTransactionData": {
     "keyTaskId": "Cid",
     "dataAdhoc": "TxData",
