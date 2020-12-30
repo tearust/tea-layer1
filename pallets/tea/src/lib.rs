@@ -211,7 +211,7 @@ pub struct SignTransactionData {
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct SignTransactionResult {
     pub task_id: Cid,
-    pub signed_tx: TxData,
+    pub succeed: bool,
 }
 
 decl_storage! {
@@ -251,15 +251,6 @@ decl_storage! {
 	    AccountAssets get(fn account_assets):
 	        map hasher(twox_64_concat) Cid => AccountAsset;
 
-	    SignTransactionTasks get(fn sign_transaction_tasks):
-	        map hasher(blake2_128_concat) Cid => SignTransactionData;
-
-	    SignTransactionTaskSender get(fn sign_transaction_sender):
-	        map hasher(blake2_128_concat) Cid => T::AccountId;
-
-	    SignTransactionResults get(fn sign_transaction_results):
-	        map hasher(blake2_128_concat) Cid => SignTransactionResult;
-
         // Register Gluon wallet account.
         // Temporary storage
 	    BrowserNonce get(fn browser_nonce):
@@ -280,6 +271,18 @@ decl_storage! {
         // Permanent storage
         Assets get(fn assets):
             map hasher(blake2_128_concat) Cid => Asset<T::AccountId>; // key: multiSigAccount value
+
+
+        // Sign transaction
+        // Temporary storage
+	    SignTransactionTasks get(fn sign_transaction_tasks):
+	        map hasher(blake2_128_concat) Cid => SignTransactionData;
+	    SignTransactionTaskSender get(fn sign_transaction_sender):
+	        map hasher(blake2_128_concat) Cid => T::AccountId;
+	    // Permanent storage
+	    SignTransactionResults get(fn sign_transaction_results):
+	        map hasher(blake2_128_concat) Cid => bool;
+
 	}
 
 	add_extra_genesis {
@@ -330,7 +333,7 @@ decl_event!(
 		AssetGenerated(Cid, Cid, Asset<AccountId>),
 		BrowserSignTransactionRequested(AccountId, Cid, SignTransactionData),
 		SignTransactionRequested(AccountId, Cid, SignTransactionData),
-		UpdateSignTransaction(Cid, SignTransactionResult),
+		UpdateSignTransaction(Cid, bool),
 	}
 );
 
@@ -1020,20 +1023,30 @@ decl_module! {
 		pub fn update_sign_tx_result(
 		    origin,
 		    task_id: Cid,
-            signed_tx: TxData,
+		    succeed: bool,
 		) -> dispatch::DispatchResult {
-		    // let _sender = ensure_signed(origin)?;
-            //
-            // ensure!(SignTransactionTasks::contains_key(&task_id), Error::<T>::TaskNotExist);
-            // ensure!(!SignTransactionResults::contains_key(&task_id), Error::<T>::SignTransactionResultExist);
-            //
-            // let sign_transaction_result = SignTransactionResult {
-            //     task_id: task_id.clone(),
-            //     signed_tx: signed_tx,
-            // };
-            //
-            // SignTransactionResults::insert(task_id.clone(), sign_transaction_result.clone());
-            // Self::deposit_event(RawEvent::UpdateSignTransaction(task_id, sign_transaction_result));
+		    let sender = ensure_signed(origin)?;
+            ensure!(SignTransactionTasks::contains_key(&task_id), Error::<T>::TaskNotExist);
+            ensure!(!SignTransactionResults::contains_key(&task_id), Error::<T>::SignTransactionResultExist);
+
+            let mut delegator = [0u8; 32];
+            let public_key_bytes = Self::account_to_bytes(&sender);
+            match public_key_bytes {
+                Ok(p) => {
+                    delegator = p;
+                }
+                Err(_e) => {
+                    debug::info!("failed to parse account");
+                    Err(Error::<T>::AccountIdConvertionError)?
+                }
+            }
+            let task = SignTransactionTasks::get(&task_id);
+            ensure!(task.delegator_tea_id == delegator, Error::<T>::InvalidSig);
+
+            SignTransactionResults::insert(task_id.clone(), succeed.clone());
+            SignTransactionTasks::remove(&task_id);
+            SignTransactionTaskSender::<T>::remove(&task_id);
+            Self::deposit_event(RawEvent::UpdateSignTransaction(task_id, succeed));
 
             Ok(())
 		}

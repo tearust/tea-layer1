@@ -99,7 +99,7 @@
   },
   "SignTransactionResult": {
     "taskId": "Cid",
-    "signed_tx": "TxData"
+    "succeed": "bool"
   },
   "Asset": {
     "owner": "Cid",
