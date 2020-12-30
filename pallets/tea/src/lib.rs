@@ -202,8 +202,6 @@ pub struct Asset<AccountId> {
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct SignTransactionData {
-    /// the task id of key generation
-    pub key_task_id: Cid,
     /// the transaction to be signed
     pub data_adhoc: TxData,
     /// tea id of delegator
@@ -255,6 +253,9 @@ decl_storage! {
 
 	    SignTransactionTasks get(fn sign_transaction_tasks):
 	        map hasher(blake2_128_concat) Cid => SignTransactionData;
+
+	    SignTransactionTaskSender get(fn sign_transaction_sender):
+	        map hasher(blake2_128_concat) Cid => T::AccountId;
 
 	    SignTransactionResults get(fn sign_transaction_results):
 	        map hasher(blake2_128_concat) Cid => SignTransactionResult;
@@ -322,13 +323,14 @@ decl_event!(
 		TransferAssetBegin(Cid, TransferAssetTask<BlockNumber>),
 		TransferAssetSign(Cid, AccountId),
 		TransferAssetEnd(Cid, TransferAssetTask<BlockNumber>),
-		SignTransactionRequested(AccountId, Cid, SignTransactionData),
-		UpdateSignTransaction(Cid, SignTransactionResult),
 		BrowserSendNonce(AccountId, Cid),
 		RegistrationApplicationSucceed(AccountId, AccountId),
 		BrowserAccountGeneration(AccountId, Cid, Cid),
 		AccountGenrationRequested(AccountId, Cid, AccountGenerationData),
 		AssetGenerated(Cid, Cid, Asset<AccountId>),
+		BrowserSignTransactionRequested(AccountId, Cid, SignTransactionData),
+		SignTransactionRequested(AccountId, Cid, SignTransactionData),
+		UpdateSignTransaction(Cid, SignTransactionResult),
 	}
 );
 
@@ -369,6 +371,10 @@ decl_error! {
         SignTransactionResultExist,
         AccountGenerationTaskAlreadyExist,
         AssetAlreadyExist,
+        AssetNotExist,
+        InvalidAssetOwner,
+        AppBrowserNotPair,
+        AppBrowserPairNotExist,
 	}
 }
 
@@ -963,23 +969,49 @@ decl_module! {
 		pub fn sign_tx(
 		    origin,
 		    task_id: Cid,
-		    key_task_id: Cid,
 		    data_adhoc: TxData,
 		    delegator_tea_id: TeaPubKey,
 		) -> dispatch::DispatchResult {
-		    // let sender = ensure_signed(origin)?;
-            //
-            // ensure!(GenerateKeySenders::<T>::contains_key(&sender), Error::<T>::KeyGenerationSenderNotExist);
-            // ensure!(!SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
-            //
-            // let task = SignTransactionData {
-            //     key_task_id: key_task_id,
-            //     data_adhoc: data_adhoc,
-            //     delegator_tea_id: delegator_tea_id,
-            // };
-            // SignTransactionTasks::insert(task_id.clone(), task.clone());
-            //
-            // Self::deposit_event(RawEvent::SignTransactionRequested(sender, task_id, task));
+		    let sender = ensure_signed(origin)?;
+
+            ensure!(BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairNotExist);
+            ensure!(!SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
+            ensure!(!SignTransactionTaskSender::<T>::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
+
+            let task = SignTransactionData {
+                data_adhoc: data_adhoc,
+                delegator_tea_id: delegator_tea_id,
+            };
+            SignTransactionTasks::insert(task_id.clone(), task.clone());
+            SignTransactionTaskSender::<T>::insert(task_id.clone(), sender.clone());
+            Self::deposit_event(RawEvent::BrowserSignTransactionRequested(sender, task_id, task));
+
+            Ok(())
+		}
+
+		#[weight = 100]
+        pub fn update_p1_signature (
+            origin,
+            task_id: Cid,
+            multisig_address: Cid,
+            p1_signautre: TxData,
+		) -> dispatch::DispatchResult {
+			let sender = ensure_signed(origin)?;
+		    ensure!(AppBrowserPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairNotExist);
+		    ensure!(Assets::<T>::contains_key(&multisig_address), Error::<T>::AssetNotExist);
+		    ensure!(SignTransactionTasks::contains_key(&task_id), Error::<T>::TaskNotExist);
+		    ensure!(SignTransactionTaskSender::<T>::contains_key(&task_id), Error::<T>::TaskNotExist);
+
+            let asset = Assets::<T>::get(&multisig_address);
+            ensure!(asset.owner == sender, Error::<T>::InvalidAssetOwner);
+
+
+            let browser = AppBrowserPair::<T>::get(&sender);
+            let task_browser = SignTransactionTaskSender::<T>::get(&task_id);
+            ensure!(browser == task_browser, Error::<T>::AppBrowserNotPair);
+
+            let task = SignTransactionTasks::get(&task_id);
+            Self::deposit_event(RawEvent::SignTransactionRequested(sender, task_id, task));
 
             Ok(())
 		}
