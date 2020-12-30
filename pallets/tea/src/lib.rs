@@ -213,7 +213,7 @@ pub struct KeyGenerationResult {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct GluonWalletInfo {
+pub struct Asset {
     pub p2: Cid,
     pub deployment_ids: Vec<Cid>,
 }
@@ -304,8 +304,8 @@ decl_storage! {
         AccountGenerationTaskDelegator get(fn account_generation_task_hashes):
             map hasher(blake2_128_concat) Cid => TeaPubKey; // key: app, value: key type
         // Permanent storage
-        GluonWallets get(fn gluon_wallets):
-            map hasher(blake2_128_concat) Cid => GluonWalletInfo; // key: multiSigAccount value
+        Assets get(fn assets):
+            map hasher(blake2_128_concat) Cid => Asset; // key: multiSigAccount value
 	}
 
 	add_extra_genesis {
@@ -357,7 +357,7 @@ decl_event!(
 		RegistrationApplicationSucceed(AccountId, AccountId),
 		BrowserAccountGeneration(AccountId, Cid, Cid),
 		AccountGenrationRequested(AccountId, Cid, AccountGenerationData),
-		GluonWalletGenerated(Cid, Cid, GluonWalletInfo),
+		AssetGenerated(Cid, Cid, Asset),
 	}
 );
 
@@ -397,7 +397,7 @@ decl_error! {
         SignTransactionTaskAlreadyExist,
         SignTransactionResultExist,
         AccountGenerationTaskAlreadyExist,
-        GluonWalletsAlreadyExist,
+        AssetAlreadyExist,
 	}
 }
 
@@ -1011,11 +1011,11 @@ decl_module! {
 	        task_id: Cid,
 	        p2: Cid,
             p2_deployment_ids: Vec<Cid>,
-            multiSigAccount: Cid,
+            multi_sig_account: Cid,
         )-> dispatch::DispatchResult {
             let sender = ensure_signed(origin)?;
             ensure!(AccountGenerationTaskDelegator::contains_key(&task_id), Error::<T>::TaskNotExist);
-            ensure!(!GluonWallets::contains_key(&multiSigAccount), Error::<T>::GluonWalletsAlreadyExist);
+            ensure!(!Assets::contains_key(&multi_sig_account), Error::<T>::AssetAlreadyExist);
 
             let mut delegator = [0u8; 32];
             let public_key_bytes = Self::account_to_bytes(&sender);
@@ -1029,17 +1029,16 @@ decl_module! {
                 }
             }
             let history_delegator = AccountGenerationTaskDelegator::get(&task_id);
-            // todo if need check sender is delegator?
             ensure!(delegator == history_delegator, Error::<T>::InvalidSig);
 
-
-            let gluon_wallet_info = GluonWalletInfo {
+            let gluon_wallet_info = Asset {
                 p2: p2.clone(),
                 deployment_ids: p2_deployment_ids.clone()
             };
 
-            GluonWallets::insert(multiSigAccount.clone(), gluon_wallet_info.clone());
-            Self::deposit_event(RawEvent::GluonWalletGenerated(task_id, multiSigAccount, gluon_wallet_info));
+            Assets::insert(multi_sig_account.clone(), gluon_wallet_info.clone());
+            AccountGenerationTaskDelegator::remove(&task_id);
+            Self::deposit_event(RawEvent::AssetGenerated(task_id, multi_sig_account, gluon_wallet_info));
 
             Ok(())
         }

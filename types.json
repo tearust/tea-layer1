@@ -113,7 +113,7 @@
     "taskId": "Cid",
     "signed_tx": "TxData"
   },
-  "GluonWalletInfo": {
+  "Asset": {
     "p2": "Cid",
     "deployment_ids": "Vec<Cid>",
   },
