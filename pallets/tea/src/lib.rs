@@ -180,13 +180,6 @@ pub struct TransferAssetTask<BlockNumber> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct RegistrationApplicationData {
-    pub nonce_hash: Cid,
-    pub nonce_signature: Signature,
-    pub browser_pk: ClientPubKey,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct KeyGenerationData {
     /// the key type: btc or eth.
     pub key_type: Cid,
@@ -304,10 +297,6 @@ decl_storage! {
         // Temporary storage
 	    BrowserNonce get(fn browser_nonce):
 	        map hasher(blake2_128_concat) T::AccountId => Cid;
-        AppRegistration get(fn app_nonce):
-            map hasher(blake2_128_concat) T::AccountId => RegistrationApplicationData;
-	    WaitBrowser get(fn wait_broswer):
-	        map hasher(blake2_128_concat) T::AccountId => T::AccountId; // key: browser value: app
 	    // Permanent storage
         BrowserAppPair get(fn browser_app_pair):
             map hasher(blake2_128_concat) T::AccountId => T::AccountId;
@@ -376,7 +365,6 @@ decl_event!(
 		SignTransactionRequested(AccountId, Cid, SignTransactionData),
 		UpdateSignTransaction(Cid, SignTransactionResult),
 		BrowserSendNonce(AccountId, Cid),
-		AppRegistration(AccountId, RegistrationApplicationData),
 		RegistrationApplicationSucceed(AccountId, AccountId),
 		BrowserAccountGeneration(AccountId, Cid, Cid),
 		AppAccountGeneration(AccountId, Cid, AccountGenerationData),
@@ -409,9 +397,9 @@ decl_error! {
         SenderAlreadySigned,
         TransferAssetTaskTimeout,
         BrowserNonceAlreadyExist,
-        AppRegistrationAlreadyExist,
         AppBrowserPairAlreadyExist,
         NonceNotMatch,
+        NonceNotExist,
         TaskNotMatch,
         TaskNotExist,
         KeyGenerationSenderAlreadyExist,
@@ -823,19 +811,9 @@ decl_module! {
             ensure!(!BrowserNonce::<T>::contains_key(&sender), Error::<T>::BrowserNonceAlreadyExist);
             ensure!(!BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
 
-            if WaitBrowser::<T>::contains_key(&sender) {
-                let app_account = WaitBrowser::<T>::get(&sender);
-                let app_nonce_hash = AppRegistration::<T>::get(&app_account).nonce_hash;
-                ensure!(nonce_hash == app_nonce_hash, Error::<T>::NonceNotMatch);
-
-                // pair finished and fire an event
-                Self::pair_finished(app_account.clone(), sender.clone());
-                Self::deposit_event(RawEvent::RegistrationApplicationSucceed(app_account, sender));
-            } else {
-                // insert into BrowserNonce and fire an event
-                BrowserNonce::<T>::insert(sender.clone(), nonce_hash.clone());
-                Self::deposit_event(RawEvent::BrowserSendNonce(sender, nonce_hash));
-            }
+             // insert into BrowserNonce and fire an event
+             BrowserNonce::<T>::insert(sender.clone(), nonce_hash.clone());
+             Self::deposit_event(RawEvent::BrowserSendNonce(sender, nonce_hash));
 
             Ok(())
 		}
@@ -849,7 +827,6 @@ decl_module! {
 		) -> dispatch::DispatchResult {
             // todo add logic of timeout
             let sender = ensure_signed(origin)?;
-            ensure!(!AppRegistration::<T>::contains_key(&sender), Error::<T>::AppRegistrationAlreadyExist);
             ensure!(!AppBrowserPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
             ensure!(nonce_signature.len() == 64, Error::<T>::InvalidNonceSig);
 
@@ -880,29 +857,21 @@ decl_module! {
                     Err(Error::<T>::AccountIdConvertionError)?
                 }
             }
-            ensure!(!BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
+            ensure!(!BrowserAppPair::<T>::contains_key(&browser_account), Error::<T>::AppBrowserPairAlreadyExist);
+            ensure!(BrowserNonce::<T>::contains_key(&browser_account), Error::<T>::NonceNotExist);
 
             let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
-            if BrowserNonce::<T>::contains_key(&browser_account) {
-                let browser_nonce_hash = BrowserNonce::<T>::get(&browser_account);
-                ensure!(browser_nonce_hash == app_nonce_hash, Error::<T>::NonceNotMatch);
+            let browser_nonce_hash = BrowserNonce::<T>::get(&browser_account);
+            ensure!(browser_nonce_hash == app_nonce_hash, Error::<T>::NonceNotMatch);
 
-                // pair finished and fire an event
-                Self::pair_finished(sender.clone(), browser_account.clone());
-                Self::deposit_event(RawEvent::RegistrationApplicationSucceed(sender, browser_account));
-            } else {
-                // insert into AppRegistration
-                let data = RegistrationApplicationData {
-                    nonce_hash: app_nonce_hash.to_vec(),
-                    nonce_signature: nonce_signature.clone(),
-                    browser_pk: browser_pk.clone(),
-                };
-                AppRegistration::<T>::insert(sender.clone(), data.clone());
-                WaitBrowser::<T>::insert(browser_account.clone(), sender.clone());
+            // pair succeed, record it into BrowserAppPair and AppBrowserPair and
+            // remove data from AppRegistration and BrowserNonce.
+            BrowserAppPair::<T>::insert(browser_account.clone(), sender.clone());
+            AppBrowserPair::<T>::insert(browser_account.clone(), sender.clone());
+            BrowserNonce::<T>::remove(browser_account.clone());
 
-                // fire an event
-                Self::deposit_event(RawEvent::AppRegistration(sender, data));
-            }
+            // pair finished and fire an event
+            Self::deposit_event(RawEvent::RegistrationApplicationSucceed(sender, browser_account));
 
             Ok(())
 		}
@@ -1272,16 +1241,6 @@ impl<T: Trait> Module<T> {
         BrowserAccountNonce::<T>::remove(browser.clone());
         WaitBrowserAccount::<T>::remove(browser);
         AccountGenerationTasks::<T>::remove(app);
-    }
-
-    fn pair_finished(app: T::AccountId, browser: T::AccountId) {
-        // pair succeed, record it into BrowserAppPair and AppBrowserPair and
-        // remove data from AppRegistration and BrowserNonce.
-        BrowserAppPair::<T>::insert(browser.clone(), app.clone());
-        AppBrowserPair::<T>::insert(app.clone(), browser.clone());
-        BrowserNonce::<T>::remove(browser.clone());
-        AppRegistration::<T>::remove(app);
-        WaitBrowser::<T>::remove(browser);
     }
 
     fn bytes_to_account(mut account_bytes: &[u8]) -> Result<T::AccountId, Error<T>> {

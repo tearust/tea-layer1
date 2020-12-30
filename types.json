@@ -113,11 +113,6 @@
     "taskId": "Cid",
     "signed_tx": "TxData"
   },
-  "RegistrationApplicationData": {
-    "nonceHash": "Cid",
-    "nonceSignature": "Signature",
-    "browserPk": "ClientPubKey"
-  },
   "GluonWalletInfo": {
     "p2": "Cid",
     "deployment_ids": "Vec<Cid>",
