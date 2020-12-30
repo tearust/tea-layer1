@@ -114,6 +114,7 @@
     "signed_tx": "TxData"
   },
   "Asset": {
+    "owner": "Cid",
     "p2": "Cid",
     "deployment_ids": "Vec<Cid>",
   },

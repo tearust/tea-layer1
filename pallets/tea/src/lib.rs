@@ -213,7 +213,8 @@ pub struct KeyGenerationResult {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct Asset {
+pub struct Asset<AccountId> {
+    pub owner: AccountId,
     pub p2: Cid,
     pub deployment_ids: Vec<Cid>,
 }
@@ -305,7 +306,7 @@ decl_storage! {
             map hasher(blake2_128_concat) Cid => TeaPubKey; // key: app, value: key type
         // Permanent storage
         Assets get(fn assets):
-            map hasher(blake2_128_concat) Cid => Asset; // key: multiSigAccount value
+            map hasher(blake2_128_concat) Cid => Asset<T::AccountId>; // key: multiSigAccount value
 	}
 
 	add_extra_genesis {
@@ -357,7 +358,7 @@ decl_event!(
 		RegistrationApplicationSucceed(AccountId, AccountId),
 		BrowserAccountGeneration(AccountId, Cid, Cid),
 		AccountGenrationRequested(AccountId, Cid, AccountGenerationData),
-		AssetGenerated(Cid, Cid, Asset),
+		AssetGenerated(Cid, Cid, Asset<AccountId>),
 	}
 );
 
@@ -1015,7 +1016,7 @@ decl_module! {
         )-> dispatch::DispatchResult {
             let sender = ensure_signed(origin)?;
             ensure!(AccountGenerationTaskDelegator::contains_key(&task_id), Error::<T>::TaskNotExist);
-            ensure!(!Assets::contains_key(&multi_sig_account), Error::<T>::AssetAlreadyExist);
+            ensure!(!Assets::<T>::contains_key(&multi_sig_account), Error::<T>::AssetAlreadyExist);
 
             let mut delegator = [0u8; 32];
             let public_key_bytes = Self::account_to_bytes(&sender);
@@ -1031,14 +1032,15 @@ decl_module! {
             let history_delegator = AccountGenerationTaskDelegator::get(&task_id);
             ensure!(delegator == history_delegator, Error::<T>::InvalidSig);
 
-            let gluon_wallet_info = Asset {
+            let asset_info = Asset {
+                owner: sender.clone(),
                 p2: p2.clone(),
                 deployment_ids: p2_deployment_ids.clone()
             };
 
-            Assets::insert(multi_sig_account.clone(), gluon_wallet_info.clone());
+            Assets::<T>::insert(multi_sig_account.clone(), asset_info.clone());
             AccountGenerationTaskDelegator::remove(&task_id);
-            Self::deposit_event(RawEvent::AssetGenerated(task_id, multi_sig_account, gluon_wallet_info));
+            Self::deposit_event(RawEvent::AssetGenerated(task_id, multi_sig_account, asset_info));
 
             Ok(())
         }
