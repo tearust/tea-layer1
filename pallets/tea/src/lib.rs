@@ -65,6 +65,7 @@ const MAX_RA_NODES_COUNT: u32 = 4;
 const MIN_RA_PASSED_THRESHOLD: u32 = 3;
 const MIN_TRANSFER_ASSET_SIGNATURE_COUNT: usize = 2;
 const MAX_TRANSFER_ASSET_TASK_PERIOD: u32 = 100;
+const TASK_TIMEOUT_PERIOD: u32 = 30;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub enum NodeStatus {
@@ -254,7 +255,7 @@ decl_storage! {
         // Register Gluon wallet account.
         // Temporary storage
 	    BrowserNonce get(fn browser_nonce):
-	        map hasher(blake2_128_concat) T::AccountId => Cid;
+	        map hasher(blake2_128_concat) T::AccountId => (T::BlockNumber, Cid);
 	    // Permanent storage
         BrowserAppPair get(fn browser_app_pair):
             map hasher(blake2_128_concat) T::AccountId => T::AccountId;
@@ -264,7 +265,7 @@ decl_storage! {
         // Generate BTC 2/3 MultiSig Account
         // Temporary storage
         BrowserAccountNonce get(fn browser_account_nonce):
-            map hasher(blake2_128_concat) T::AccountId => (Cid, Cid); // value: (nonce hash, task hash)
+            map hasher(blake2_128_concat) T::AccountId => (T::BlockNumber, Cid, Cid); // value: (nonce hash, task hash)
         // Intermediate storage to wait for task result
         AccountGenerationTaskDelegator get(fn account_generation_task_hashes):
             map hasher(blake2_128_concat) Cid => TeaPubKey; // key: app, value: key type
@@ -278,7 +279,7 @@ decl_storage! {
 	    SignTransactionTasks get(fn sign_transaction_tasks):
 	        map hasher(blake2_128_concat) Cid => SignTransactionData;
 	    SignTransactionTaskSender get(fn sign_transaction_sender):
-	        map hasher(blake2_128_concat) Cid => T::AccountId;
+	        map hasher(blake2_128_concat) Cid => (T::BlockNumber, T::AccountId);
 	    // Permanent storage
 	    SignTransactionResults get(fn sign_transaction_results):
 	        map hasher(blake2_128_concat) Cid => bool;
@@ -378,6 +379,7 @@ decl_error! {
         InvalidAssetOwner,
         AppBrowserNotPair,
         AppBrowserPairNotExist,
+        TaskTimeout,
 	}
 }
 
@@ -420,6 +422,15 @@ decl_module! {
 
             Ok(())
 		}
+
+        // #[weight = 100]
+        // pub fn test(origin) -> dispatch::DispatchResult {
+        //     debug::info!("############ failed to parse app account");
+        //     #[cfg(feature = "full_crypto")]
+        //     debug::info!("############# test ###################");
+        //
+        //     Ok(())
+        // }
 
 		#[weight = 100]
 		pub fn update_manifest(origin, tea_id: TeaPubKey, manifest_cid: Cid) -> dispatch::DispatchResult {
@@ -780,7 +791,8 @@ decl_module! {
             ensure!(!BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
 
              // insert into BrowserNonce and fire an event
-             BrowserNonce::<T>::insert(sender.clone(), nonce_hash.clone());
+             let current_block_number = <frame_system::Module<T>>::block_number();
+             BrowserNonce::<T>::insert(sender.clone(), (current_block_number, nonce_hash.clone()));
              Self::deposit_event(RawEvent::BrowserSendNonce(sender, nonce_hash));
 
             Ok(())
@@ -829,7 +841,13 @@ decl_module! {
             ensure!(BrowserNonce::<T>::contains_key(&browser_account), Error::<T>::NonceNotExist);
 
             let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
-            let browser_nonce_hash = BrowserNonce::<T>::get(&browser_account);
+            let (block_number, browser_nonce_hash) = BrowserNonce::<T>::get(&browser_account);
+            let current_block_number = <frame_system::Module<T>>::block_number();
+            if current_block_number - block_number > TASK_TIMEOUT_PERIOD.into() {
+                BrowserNonce::<T>::remove(&browser_account);
+                debug::info!("browser task timeout");
+                Err(Error::<T>::TaskTimeout)?
+            }
             ensure!(browser_nonce_hash == app_nonce_hash, Error::<T>::NonceNotMatch);
 
             // pair succeed, record it into BrowserAppPair and AppBrowserPair and
@@ -855,7 +873,8 @@ decl_module! {
             ensure!(!BrowserAccountNonce::<T>::contains_key(&sender), Error::<T>::BrowserNonceAlreadyExist);
 
             // insert into BrowserNonce and fire an event
-            BrowserAccountNonce::<T>::insert(sender.clone(), (nonce_hash.clone(), task_hash.clone()));
+            let current_block_number = <frame_system::Module<T>>::block_number();
+            BrowserAccountNonce::<T>::insert(sender.clone(), (current_block_number, nonce_hash.clone(), task_hash.clone()));
             Self::deposit_event(RawEvent::BrowserAccountGeneration(sender, nonce_hash, task_hash));
 
             Ok(())
@@ -917,9 +936,16 @@ decl_module! {
             let task_hash = Self::sha2_256(&task_data);
             let app_nonce_hash = Self::sha2_256(&nonce.as_slice());
             let browser_nonce_hash = BrowserNonce::<T>::get(&browser_account);
-            let (browser_nonce_hash, browser_task_hash) = BrowserAccountNonce::<T>::get(&browser_account);
+            let (block_number, browser_nonce_hash, browser_task_hash) = BrowserAccountNonce::<T>::get(&browser_account);
             ensure!(browser_nonce_hash == app_nonce_hash, Error::<T>::NonceNotMatch);
             ensure!(browser_task_hash == task_hash, Error::<T>::TaskNotMatch);
+
+            let current_block_number = <frame_system::Module<T>>::block_number();
+            if current_block_number - block_number > TASK_TIMEOUT_PERIOD.into() {
+                BrowserAccountNonce::<T>::remove(&browser_account);
+                debug::info!("browser task timeout");
+                Err(Error::<T>::TaskTimeout)?
+            }
 
             // account generation requested and fire an event
             AccountGenerationTaskDelegator::insert(task_hash.to_vec(), delegator_tea_id.clone());
@@ -986,7 +1012,8 @@ decl_module! {
                 delegator_tea_id: delegator_tea_id,
             };
             SignTransactionTasks::insert(task_id.clone(), task.clone());
-            SignTransactionTaskSender::<T>::insert(task_id.clone(), sender.clone());
+            let current_block_number = <frame_system::Module<T>>::block_number();
+            SignTransactionTaskSender::<T>::insert(task_id.clone(), (current_block_number, sender.clone()));
             Self::deposit_event(RawEvent::BrowserSignTransactionRequested(sender, task_id, task));
 
             Ok(())
@@ -1010,8 +1037,17 @@ decl_module! {
 
 
             let browser = AppBrowserPair::<T>::get(&sender);
-            let task_browser = SignTransactionTaskSender::<T>::get(&task_id);
+            let (block_number, task_browser) = SignTransactionTaskSender::<T>::get(&task_id);
             ensure!(browser == task_browser, Error::<T>::AppBrowserNotPair);
+
+            let current_block_number = <frame_system::Module<T>>::block_number();
+            if current_block_number - block_number > TASK_TIMEOUT_PERIOD.into() {
+                SignTransactionTasks::remove(&task_id);
+                SignTransactionTaskSender::<T>::remove(&task_id);
+                debug::info!("browser task timeout");
+                Err(Error::<T>::TaskTimeout)?
+            }
+
 
             let task = SignTransactionTasks::get(&task_id);
             Self::deposit_event(RawEvent::SignTransactionRequested(sender, task_id, task));

@@ -104,13 +104,13 @@
   "Asset": {
     "owner": "Cid",
     "p2": "Cid",
-    "deploymentIds": "Vec<Cid>",
+    "deploymentIds": "Vec<Cid>"
   },
   "AccountGenerationData": {
     "keyType": "Cid",
     "n": "u32",
     "k": "u32",
     "delegatorTeaId": "TeaPubKey",
-    "p1": "Cid",
+    "p1": "Cid"
   }
 }
