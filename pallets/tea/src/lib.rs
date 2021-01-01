@@ -34,9 +34,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "full_crypto")]
-mod verify;
-
 /// The pallet's configuration trait.
 pub trait Trait: balances::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -822,8 +819,7 @@ decl_module! {
                     Err(Error::<T>::AccountIdConvertionError)?
                 }
             }
-            #[cfg(feature = "full_crypto")]
-            ensure!(verify::verify_signature(app_pk, nonce_signature, nonce), Error::<T>::InvalidNonceSig);
+            ensure!(Self::verify_signature(app_pk, nonce_signature, nonce.clone()), Error::<T>::InvalidNonceSig);
 
             // check browser is not paired.
             let mut browser_account = T::AccountId::default();
@@ -921,8 +917,7 @@ decl_module! {
                     Err(Error::<T>::AccountIdConvertionError)?
                 }
             }
-            #[cfg(feature = "full_crypto")]
-            ensure!(verify::verify_signature(app_pk, nonce_signature, nonce), Error::<T>::InvalidNonceSig);
+            ensure!(Self::verify_signature(app_pk, nonce_signature, nonce.clone()), Error::<T>::InvalidNonceSig);
 
             // check task hash
             let task = AccountGenerationData {
@@ -1302,5 +1297,13 @@ impl<T: Trait> Module<T> {
         let mut output = [0u8; 32];
         output.copy_from_slice(&hasher.result());
         output
+    }
+
+    pub fn verify_signature(public_key: [u8; 32], nonce_signature: Vec<u8>, data: Vec<u8> ) -> bool {
+        let pubkey = ed25519::Public(public_key);
+        let mut bytes = [0u8; 64];
+        bytes.copy_from_slice(&nonce_signature);
+        let signature = ed25519::Signature::from_raw(bytes);
+        return signature.verify(&data[..], &pubkey);
     }
 }

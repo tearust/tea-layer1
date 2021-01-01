@@ -43,6 +43,7 @@ fn test_vector_should_work() {
     let signature = ed25519::Signature::from_raw(signature);
     assert!(&pair.sign(&message[..]) == &signature);
     assert!(ed25519::Pair::verify(&signature, &message[..], &public));
+    assert!(signature.verify(&message[..], &public));
 }
 
 #[test]
@@ -64,6 +65,7 @@ fn test_vector_by_string_should_work() {
     let signature = ed25519::Signature::from_raw(signature);
     assert!(&pair.sign(&message[..]) == &signature);
     assert!(ed25519::Pair::verify(&signature, &message[..], &public));
+    assert!(signature.verify(&message[..], &public));
 }
 
 #[test]
@@ -75,6 +77,7 @@ fn test_ed25519_sig_should_work() {
     let signature = hex!("26bcb7e99923c877cb6d50afedaf0fca0af4f3c78b437e8c48c7107f9ebdd1a00aa482e67ca244a40f44cf295d1b9f5c416202a5b785401408d8cffad0f18302");
     let signature = ed25519::Signature::from_raw(signature);
     assert!(ed25519::Pair::verify(&signature, &message[..], &public));
+    assert!(signature.verify(&message[..], &public));
 }
 
 #[test]
@@ -105,6 +108,8 @@ fn test_delegate_sig_should_work() {
         &auth_payload[..],
         &public
     ));
+    assert!(signature.verify(&auth_payload[..], &public));
+
 }
 
 #[test]
@@ -130,6 +135,7 @@ fn test_account_id_verification_should_work() {
         sr25519::Public::from_str("5GBykvvrUz3vwTttgHzUEPdm7G1FND1reBfddQLdiaCbhoMd").unwrap();
     println!("pub: {:?}", public);
     assert!(sr25519::Pair::verify(&signature, &message[..], &public));
+    assert!(signature.verify(&message[..], &public));
 }
 
 #[test]
