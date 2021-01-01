@@ -329,6 +329,17 @@ pub type Executive = frame_executive::Executive<
 >;
 
 impl_runtime_apis! {
+	// Here we implement our custom runtime API.
+	impl tea_runtime_api::TeaApi<Block> for Runtime {
+		fn get_sum() -> u32 {
+			// This Runtime API calls into a specific pallet. Calling a pallet is a common
+			// design pattern. You can see most other APIs in this file do the same.
+			// It is also possible to write your logic right here in the runtime
+			// amalgamator file
+			Tea::get_sum()
+		}
+	}
+
 	// impl tea::api::TeaApi<Block> for Runtime {
 	// 	fn get_sum() -> u32 {
     //         Tea::get_sum()

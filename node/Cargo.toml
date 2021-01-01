@@ -21,12 +21,16 @@ substrate-build-script-utils = '2.0.0'
 
 [dependencies]
 jsonrpc-core = '15.0.0'
+jsonrpc-core-client = "15.0"
+jsonrpc-derive = "15.0"
 structopt = '0.3.8'
 hex = "0.4.0"
 hex-literal = "0.2.1"
 
 # local dependencies
 tea-runtime = { path = '../runtime', version = '2.0.0' }
+tea-rpc = { path = "../pallets/tea/rpc", version = '2.0.0' }
+tea-runtime-api = { path = "../pallets/tea/runtime-api", version = '2.0.0' }
 
 # Substrate dependencies
 frame-benchmarking = '2.0.0'

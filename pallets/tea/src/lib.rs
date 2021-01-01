@@ -281,6 +281,8 @@ decl_storage! {
 	    SignTransactionResults get(fn sign_transaction_results):
 	        map hasher(blake2_128_concat) Cid => bool;
 
+        Thing1 get(fn thing1): u32;
+        Thing2 get(fn thing2): u32;
 	}
 
 	add_extra_genesis {
@@ -301,8 +303,16 @@ decl_storage! {
 				Nodes::<T>::insert(&tea_id, node);
 				BuildInNodes::insert(&tea_id, &tea_id);
 			}
+			Thing1::put(1);
+			Thing2::put(2);
 		})
 	}
+}
+
+impl<T: Trait> Module<T> {
+    pub fn get_sum() -> u32 {
+        Thing1::get() + Thing2::get()
+    }
 }
 
 decl_event!(
@@ -419,15 +429,6 @@ decl_module! {
 
             Ok(())
 		}
-
-        // #[weight = 100]
-        // pub fn test(origin) -> dispatch::DispatchResult {
-        //     debug::info!("############ failed to parse app account");
-        //     #[cfg(feature = "full_crypto")]
-        //     debug::info!("############# test ###################");
-        //
-        //     Ok(())
-        // }
 
 		#[weight = 100]
 		pub fn update_manifest(origin, tea_id: TeaPubKey, manifest_cid: Cid) -> dispatch::DispatchResult {
@@ -1271,11 +1272,6 @@ impl<T: Trait> Module<T> {
                 Error::<T>::InvalidExecutorSig);
 
         Ok(())
-    }
-
-    // JSON-RPC implementation.
-    pub fn get_sum() -> u32 {
-        100 + 200
     }
 
     pub fn get_node_by_ephemeral_id(ephemeral_id: TeaPubKey) -> Option<Node<T::BlockNumber>> {

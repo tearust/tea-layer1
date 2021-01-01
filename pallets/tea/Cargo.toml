@@ -88,6 +88,7 @@ std = [
     'safe-mix/std',
     'frame-system/std',
     'sp-std/std',
+    "sp-runtime/std",
     'serde',
     'pallet-balances/std',
 ]
