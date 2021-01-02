@@ -283,6 +283,14 @@ decl_storage! {
 
         Thing1 get(fn thing1): u32;
         Thing2 get(fn thing2): u32;
+
+        // delegator
+        // DelegatesCount get(fn delegates_count): u64;
+        Delegates get(fn delegates): Vec<(TeaPubKey, T::BlockNumber)>;
+	         // map hasher(blake2_128_concat) TeaPubKey => T::BlockNumber;
+        // if need to use nonce to get a fixed delegator.
+        // DelegatesIndex get(fn delegates_index):
+	    //     map hasher(blake2_128_concat) u64 => (TeaPubKey, T::BlockNumber);
 	}
 
 	add_extra_genesis {
@@ -312,6 +320,27 @@ decl_storage! {
 impl<T: Trait> Module<T> {
     pub fn get_sum() -> u32 {
         Thing1::get() + Thing2::get()
+    }
+
+    pub fn get_delegates(start: u32, count: u32) -> Vec<[u8; 32]> {
+        let delegates = Delegates::<T>::get();
+        let current_block_number = <frame_system::Module<T>>::block_number();
+        let mut result: Vec<[u8; 32]> = vec![];
+        let mut index: u32 = 0;
+        for (d, b) in delegates {
+            if current_block_number - b < RUNTIME_ACTIVITY_THRESHOLD.into() {
+                index = index+1;
+                if index > start {
+                    result.push(d.into());
+                    let size = result.len();
+                    let delegates_count = count as usize;
+                    if size == delegates_count {
+                        break;
+                    }
+                }
+            }
+        }
+        result
     }
 }
 
@@ -1079,6 +1108,34 @@ decl_module! {
             SignTransactionTasks::remove(&task_id);
             SignTransactionTaskSender::<T>::remove(&task_id);
             Self::deposit_event(RawEvent::UpdateSignTransaction(task_id, succeed));
+
+            Ok(())
+		}
+
+        // DelegatesIndex get(fn delegate_index):
+	    //      map hasher(blake2_128_concat) u64 => TeaPubKey;
+        // Delegates get(fn delegates): Vec<TeaPubKey, T::BlockNumber>;
+        #[weight = 100]
+        pub fn update_delegator(
+		    origin,
+		    delegator_tea_id: TeaPubKey,
+		) -> dispatch::DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+            let mut exist = false;
+            let current_block_number = <frame_system::Module<T>>::block_number();
+            let mut delegates = Delegates::<T>::get();
+            for (d, b) in &mut delegates {
+                if d == &delegator_tea_id {
+                    *b = current_block_number;
+                    exist = true;
+                    break;
+                }
+            }
+            if !exist {
+                delegates.push((delegator_tea_id, current_block_number));
+            }
+            Delegates::<T>::put(delegates);
 
             Ok(())
 		}

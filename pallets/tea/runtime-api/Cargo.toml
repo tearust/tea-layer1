@@ -7,6 +7,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 sp-api = { version = '2.0.0', default-features = false}
+sp-std = { default-features = false, version = '2.0.0' }
 
 [dev-dependencies]
 serde_json = "1.0"
@@ -15,4 +16,5 @@ serde_json = "1.0"
 default = ["std"]
 std = [
 	"sp-api/std",
+    'sp-std/std',
 ]

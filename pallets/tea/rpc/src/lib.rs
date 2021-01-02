@@ -12,6 +12,9 @@ use tea_runtime_api::TeaApi as TeaRuntimeApi;
 pub trait TeaApi<BlockHash> {
     #[rpc(name = "tea_getSum")]
     fn get_sum(&self, at: Option<BlockHash>) -> Result<u32>;
+
+    #[rpc(name = "tea_getDelegates")]
+    fn get_delegates(&self, start: u32, count: u32, at: Option<BlockHash>) -> Result<Vec<[u8; 32]>>;
 }
 
 /// A struct that implements the `SumStorageApi`.
@@ -47,6 +50,20 @@ impl<C, Block> TeaApi<<Block as BlockT>::Hash> for Tea<C, Block>
             self.client.info().best_hash));
 
         let runtime_api_result = api.get_sum(&at);
+        runtime_api_result.map_err(|e| RpcError {
+            code: ErrorCode::ServerError(9876), // No real reason for this value
+            message: "Something wrong".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
+    }
+
+    fn get_delegates(&self, start: u32, count: u32, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<[u8; 32]>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(||
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash));
+
+        let runtime_api_result = api.get_delegates(&at, start, count);
         runtime_api_result.map_err(|e| RpcError {
             code: ErrorCode::ServerError(9876), // No real reason for this value
             message: "Something wrong".into(),

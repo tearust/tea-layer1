@@ -338,6 +338,10 @@ impl_runtime_apis! {
 			// amalgamator file
 			Tea::get_sum()
 		}
+
+		fn get_delegates(start: u32, count: u32) -> Vec<[u8; 32]> {
+			Tea::get_delegates(start, count)
+		}
 	}
 
 	// impl tea::api::TeaApi<Block> for Runtime {
