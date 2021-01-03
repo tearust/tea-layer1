@@ -30,7 +30,9 @@ services:
     image: tearust/tea-layer1:latest
     ports:
       - "9944:9944"
+      - "9933:9933"
     volumes:
+      - ../:/tearust
       - ./docker/.local:/root/.local
 #
 #  alice:
