@@ -84,6 +84,8 @@ std = [
     'pallet-timestamp/std',
     'pallet-transaction-payment/std',
     'pallet-transaction-payment-rpc-runtime-api/std',
+    'pallet-tea/std',
+    'tea-runtime-api/std',
     'sp-api/std',
     'sp-block-builder/std',
     'sp-consensus-aura/std',

@@ -178,15 +178,17 @@ pub struct TransferAssetTask<BlockNumber> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
-pub struct AccountGenerationData {
+pub struct AccountGenerationDataWithoutP3 {
     /// the key type: btc or eth.
     pub key_type: Cid,
     /// split the secret to `n` pieces
     pub n: u32,
     /// if have k (k < n) pieces the secret can be recovered
     pub k: u32,
-    /// tea id of delegator
-    pub delegator_tea_id: TeaPubKey,
+    /// the nonce hash of delegator
+    pub delegator_nonce_hash: Cid,
+    /// encrypted nonce using delegator pubic key
+    pub delegator_nonce_rsa: Cid,
     /// p1 public key
     pub p1: Cid,
 }
@@ -202,8 +204,10 @@ pub struct Asset<AccountId> {
 pub struct SignTransactionData {
     /// the transaction to be signed
     pub data_adhoc: TxData,
-    /// tea id of delegator
-    pub delegator_tea_id: TeaPubKey,
+    /// the hash of nonce
+    pub delegator_nonce_hash: Cid,
+    /// encrypted nonce using delegator pubic key
+    pub delegator_nonce_rsa: Cid,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
@@ -264,8 +268,8 @@ decl_storage! {
         BrowserAccountNonce get(fn browser_account_nonce):
             map hasher(blake2_128_concat) T::AccountId => (T::BlockNumber, Cid, Cid); // value: (nonce hash, task hash)
         // Intermediate storage to wait for task result
-        AccountGenerationTaskDelegator get(fn account_generation_task_hashes):
-            map hasher(blake2_128_concat) Cid => TeaPubKey; // key: app, value: key type
+        AccountGenerationTaskDelegator get(fn account_generation_task_delegator):
+            map hasher(blake2_128_concat) Cid => Cid; // key: app, value: key type
         // Permanent storage
         Assets get(fn assets):
             map hasher(blake2_128_concat) Cid => Asset<T::AccountId>; // key: multiSigAccount value
@@ -366,10 +370,10 @@ decl_event!(
 		BrowserSendNonce(AccountId, Cid),
 		RegistrationApplicationSucceed(AccountId, AccountId),
 		BrowserAccountGeneration(AccountId, Cid, Cid),
-		AccountGenrationRequested(AccountId, Cid, AccountGenerationData),
+		AccountGenrationRequested(AccountId, Cid, AccountGenerationDataWithoutP3),
 		AssetGenerated(Cid, Cid, Asset<AccountId>),
 		BrowserSignTransactionRequested(AccountId, Cid, SignTransactionData),
-		SignTransactionRequested(AccountId, Cid, SignTransactionData),
+		SignTransactionRequested(AccountId, Cid, Cid, SignTransactionData),
 		UpdateSignTransaction(Cid, bool),
 	}
 );
@@ -808,11 +812,10 @@ decl_module! {
 		}
 
 		#[weight = 100]
-		pub fn send_nonce(
+		pub fn browser_send_nonce(
 		    origin,
 		    nonce_hash: Cid,
 		) -> dispatch::DispatchResult {
-            // todo add logic of timeout
 		    let sender = ensure_signed(origin)?;
             ensure!(!BrowserNonce::<T>::contains_key(&sender), Error::<T>::BrowserNonceAlreadyExist);
             ensure!(!BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
@@ -832,7 +835,6 @@ decl_module! {
             nonce_signature: Signature,
             browser_pk: ClientPubKey,
 		) -> dispatch::DispatchResult {
-            // todo add logic of timeout
             let sender = ensure_signed(origin)?;
             ensure!(!AppBrowserPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairAlreadyExist);
             ensure!(nonce_signature.len() == 64, Error::<T>::InvalidNonceSig);
@@ -911,7 +913,8 @@ decl_module! {
            origin,
            nonce: Cid,
            nonce_signature: Cid,
-           delegator_tea_id: TeaPubKey,
+           delegator_nonce_hash: Cid,
+           delegator_nonce_rsa: Cid,
            key_type: Cid,
            p1: Cid,
            p2_n: u32,
@@ -950,11 +953,12 @@ decl_module! {
             ensure!(Self::verify_signature(app_pk, nonce_signature, nonce.clone()), Error::<T>::InvalidNonceSig);
 
             // check task hash
-            let task = AccountGenerationData {
+            let task = AccountGenerationDataWithoutP3 {
                 key_type: key_type.clone(),
                 n: p2_n,
                 k: p2_k,
-                delegator_tea_id: delegator_tea_id,
+                delegator_nonce_hash: delegator_nonce_hash.clone(),
+                delegator_nonce_rsa: delegator_nonce_rsa,
                 p1: p1,
             };
             let task_data = task.encode();
@@ -973,7 +977,7 @@ decl_module! {
             }
 
             // account generation requested and fire an event
-            AccountGenerationTaskDelegator::insert(task_hash.to_vec(), delegator_tea_id.clone());
+            AccountGenerationTaskDelegator::insert(task_hash.to_vec(), delegator_nonce_hash.clone());
             BrowserAccountNonce::<T>::remove(&browser_account);
             Self::deposit_event(RawEvent::AccountGenrationRequested(sender, task_hash.to_vec(), task));
 
@@ -984,6 +988,7 @@ decl_module! {
         pub fn update_generate_account_without_p3_result(
 	        origin,
 	        task_id: Cid,
+	        delegator_nonce: Cid,
 	        p2: Cid,
             p2_deployment_ids: Vec<Cid>,
             multi_sig_account: Cid,
@@ -1003,8 +1008,9 @@ decl_module! {
                     Err(Error::<T>::AccountIdConvertionError)?
                 }
             }
-            let history_delegator = AccountGenerationTaskDelegator::get(&task_id);
-            ensure!(delegator == history_delegator, Error::<T>::InvalidSig);
+            let history_delegator_nonce_hash = AccountGenerationTaskDelegator::get(&task_id);
+            let delegator_nonce_hash = Self::sha2_256(&delegator_nonce);
+            ensure!(delegator_nonce_hash == history_delegator_nonce_hash.as_slice(), Error::<T>::InvalidSig);
 
             let asset_info = Asset {
                 owner: sender.clone(),
@@ -1020,25 +1026,28 @@ decl_module! {
         }
 
 		#[weight = 100]
-		pub fn sign_tx(
+		pub fn browser_sign_tx(
 		    origin,
-		    task_id: Cid,
 		    data_adhoc: TxData,
-		    delegator_tea_id: TeaPubKey,
+            delegator_nonce_hash: Cid,
+            delegator_nonce_rsa: Cid,
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
-
             ensure!(BrowserAppPair::<T>::contains_key(&sender), Error::<T>::AppBrowserPairNotExist);
-            ensure!(!SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
-            ensure!(!SignTransactionTaskSender::<T>::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
 
             let task = SignTransactionData {
                 data_adhoc: data_adhoc,
-                delegator_tea_id: delegator_tea_id,
+                delegator_nonce_hash: delegator_nonce_hash,
+                delegator_nonce_rsa: delegator_nonce_rsa,
             };
-            SignTransactionTasks::insert(task_id.clone(), task.clone());
+            let task_data = task.encode();
+            let task_id = Self::sha2_256(&task_data).to_vec();
+            ensure!(!SignTransactionTasks::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
+            ensure!(!SignTransactionTaskSender::<T>::contains_key(&task_id), Error::<T>::SignTransactionTaskAlreadyExist);
+
+            SignTransactionTasks::insert((&task_id).clone(), task.clone());
             let current_block_number = <frame_system::Module<T>>::block_number();
-            SignTransactionTaskSender::<T>::insert(task_id.clone(), (current_block_number, sender.clone()));
+            SignTransactionTaskSender::<T>::insert((&task_id).clone(), (current_block_number, sender.clone()));
             Self::deposit_event(RawEvent::BrowserSignTransactionRequested(sender, task_id, task));
 
             Ok(())
@@ -1075,7 +1084,7 @@ decl_module! {
 
 
             let task = SignTransactionTasks::get(&task_id);
-            Self::deposit_event(RawEvent::SignTransactionRequested(sender, task_id, task));
+            Self::deposit_event(RawEvent::SignTransactionRequested(sender, task_id, multisig_address, task));
 
             Ok(())
 		}
@@ -1084,6 +1093,7 @@ decl_module! {
 		pub fn update_sign_tx_result(
 		    origin,
 		    task_id: Cid,
+		    delegator_nonce: Cid,
 		    succeed: bool,
 		) -> dispatch::DispatchResult {
 		    let sender = ensure_signed(origin)?;
@@ -1102,7 +1112,8 @@ decl_module! {
                 }
             }
             let task = SignTransactionTasks::get(&task_id);
-            ensure!(task.delegator_tea_id == delegator, Error::<T>::InvalidSig);
+            let delegator_nonce_hash = Self::sha2_256(&delegator_nonce);
+            ensure!(task.delegator_nonce_hash.as_slice() == delegator_nonce_hash, Error::<T>::InvalidSig);
 
             SignTransactionResults::insert(task_id.clone(), succeed.clone());
             SignTransactionTasks::remove(&task_id);

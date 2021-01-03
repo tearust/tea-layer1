@@ -95,7 +95,8 @@
   },
   "SignTransactionData": {
     "dataAdhoc": "TxData",
-    "delegatorTeaId": "TeaPubKey"
+    "delegator_nonce_hash": "Cid",
+    "delegator_nonce_rsa": "Cid"
   },
   "SignTransactionResult": {
     "taskId": "Cid",
@@ -106,11 +107,11 @@
     "p2": "Cid",
     "deploymentIds": "Vec<Cid>"
   },
-  "AccountGenerationData": {
+  "AccountGenerationDataWithoutP3": {
     "keyType": "Cid",
     "n": "u32",
     "k": "u32",
-    "delegatorTeaId": "TeaPubKey",
+    "delegatorNonceRsa": "Cid",
     "p1": "Cid"
   }
 }
