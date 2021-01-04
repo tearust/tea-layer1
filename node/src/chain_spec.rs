@@ -1,13 +1,12 @@
 use sp_core::{Pair, Public, sr25519};
 use tea_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, TeaConfig, WASM_BINARY, Signature
+	SudoConfig, SystemConfig, TeaConfig, GluonConfig, WASM_BINARY, Signature
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{Verify, IdentifyAccount};
 use sc_service::ChainType;
-use sp_core::H256;
 use hex_literal::hex;
 
 // The URL for the telemetry server.
@@ -175,5 +174,6 @@ fn testnet_genesis(
 				 [0u8; 32])
 			],
 		}),
+		pallet_gluon: Some(GluonConfig {}),
 	}
 }

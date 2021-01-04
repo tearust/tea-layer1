@@ -44,6 +44,9 @@ pub use pallet_template;
 /// Importing a tea pallet
 pub use pallet_tea;
 
+/// Importing a gluon pallet
+pub use pallet_gluon;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -274,6 +277,11 @@ impl pallet_tea::Trait for Runtime {
 	type Currency = pallet_balances::Module<Runtime>;
 }
 
+impl pallet_gluon::Trait for Runtime {
+	type Event = Event;
+	type Currency = pallet_balances::Module<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -292,6 +300,7 @@ construct_runtime!(
 		// Include the custom logic from the template pallet in the runtime.
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
 		Tea: pallet_tea::{Module, Call, Storage, Event<T>, Config},
+		Gluon: pallet_gluon::{Module, Call, Storage, Event<T>, Config},
 	}
 );
 
@@ -330,28 +339,11 @@ pub type Executive = frame_executive::Executive<
 
 impl_runtime_apis! {
 	// Here we implement our custom runtime API.
-	impl tea_runtime_api::TeaApi<Block> for Runtime {
-		fn get_sum() -> u32 {
-			// This Runtime API calls into a specific pallet. Calling a pallet is a common
-			// design pattern. You can see most other APIs in this file do the same.
-			// It is also possible to write your logic right here in the runtime
-			// amalgamator file
-			Tea::get_sum()
-		}
-
+	impl gluon_runtime_api::GluonApi<Block> for Runtime {
 		fn get_delegates(start: u32, count: u32) -> Vec<[u8; 32]> {
-			Tea::get_delegates(start, count)
+			Gluon::get_delegates(start, count)
 		}
 	}
-
-	// impl tea::api::TeaApi<Block> for Runtime {
-	// 	fn get_sum() -> u32 {
-    //         Tea::get_sum()
-    //     }
-    //     fn get_node_by_ephemeral_id(id: tea::TeaPubKey) -> Option<tea::Node> {
-    //     	Tea::get_node_by_ephemeral_id(id)
-    //     }
-	// }
 
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {

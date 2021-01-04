@@ -1877,6 +1877,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "gluon-rpc"
+version = "2.0.0"
+dependencies = [
+ "gluon-runtime-api",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "gluon-runtime-api"
+version = "2.0.0"
+dependencies = [
+ "serde_json",
+ "sp-api",
+ "sp-std",
+]
+
+[[package]]
 name = "h2"
 version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3610,6 +3635,29 @@ dependencies = [
  "serde",
  "sp-finality-tracker",
  "sp-inherents",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-gluon"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "hex",
+ "hex-literal 0.2.1",
+ "pallet-balances",
+ "pallet-randomness-collective-flip",
+ "parity-scale-codec",
+ "pretty_assertions",
+ "safe-mix",
+ "serde",
+ "serde_json",
+ "sha2 0.8.2",
+ "sp-api",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -6837,6 +6885,8 @@ version = "2.0.0"
 dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
+ "gluon-rpc",
+ "gluon-runtime-api",
  "hex",
  "hex-literal 0.2.1",
  "jsonrpc-core",
@@ -6867,25 +6917,7 @@ dependencies = [
  "structopt",
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
- "tea-rpc",
  "tea-runtime",
- "tea-runtime-api",
-]
-
-[[package]]
-name = "tea-rpc"
-version = "2.0.0"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-rpc",
- "sp-runtime",
- "tea-runtime-api",
 ]
 
 [[package]]
@@ -6898,9 +6930,11 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "gluon-runtime-api",
  "hex-literal 0.3.1",
  "pallet-aura",
  "pallet-balances",
+ "pallet-gluon",
  "pallet-grandpa",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
@@ -6923,16 +6957,6 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder-runner",
- "tea-runtime-api",
-]
-
-[[package]]
-name = "tea-runtime-api"
-version = "2.0.0"
-dependencies = [
- "serde_json",
- "sp-api",
- "sp-std",
 ]
 
 [[package]]

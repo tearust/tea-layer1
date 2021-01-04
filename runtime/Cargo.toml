@@ -27,7 +27,8 @@ serde = { features = ['derive'], optional = true, version = '1.0.101' }
 # local dependencies
 pallet-template = { path = '../pallets/template', default-features = false, version = '2.0.0' }
 pallet-tea = { path = '../pallets/tea', default-features = false, version = '2.0.0' }
-tea-runtime-api = { default-features = false, path = "../pallets/tea/runtime-api" }
+pallet-gluon = { path = '../pallets/gluon', default-features = false, version = '2.0.0' }
+gluon-runtime-api = { default-features = false, path = "../pallets/gluon/runtime-api" }
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '2.0.0' }
@@ -85,7 +86,8 @@ std = [
     'pallet-transaction-payment/std',
     'pallet-transaction-payment-rpc-runtime-api/std',
     'pallet-tea/std',
-    'tea-runtime-api/std',
+    'pallet-gluon/std',
+    'gluon-runtime-api/std',
     'sp-api/std',
     'sp-block-builder/std',
     'sp-consensus-aura/std',
