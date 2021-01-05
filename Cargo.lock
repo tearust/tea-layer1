@@ -1879,6 +1879,7 @@ dependencies = [
 [[package]]
 name = "gluon-rpc"
 version = "2.0.0"
+source = "git+https://github.com/tearust/gluon_pallet#710a9bc059978df96e31091e7e2a278b61e29a84"
 dependencies = [
  "gluon-runtime-api",
  "jsonrpc-core",
@@ -1895,8 +1896,8 @@ dependencies = [
 [[package]]
 name = "gluon-runtime-api"
 version = "2.0.0"
+source = "git+https://github.com/tearust/gluon_pallet#710a9bc059978df96e31091e7e2a278b61e29a84"
 dependencies = [
- "serde_json",
  "sp-api",
  "sp-std",
 ]
@@ -3642,18 +3643,15 @@ dependencies = [
 [[package]]
 name = "pallet-gluon"
 version = "2.0.0"
+source = "git+https://github.com/tearust/gluon_pallet#710a9bc059978df96e31091e7e2a278b61e29a84"
 dependencies = [
  "frame-support",
  "frame-system",
- "hex",
- "hex-literal 0.2.1",
  "pallet-balances",
  "pallet-randomness-collective-flip",
  "parity-scale-codec",
- "pretty_assertions",
  "safe-mix",
  "serde",
- "serde_json",
  "sha2 0.8.2",
  "sp-api",
  "sp-core",
@@ -7481,7 +7479,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bfd5b7557925ce778ff9b9ef90e3ade34c524b5ff10e239c69a42d546d2af56"
 dependencies = [
- "rand 0.7.3",
+ "rand 0.5.6",
 ]
 
 [[package]]
