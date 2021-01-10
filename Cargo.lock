@@ -1879,7 +1879,7 @@ dependencies = [
 [[package]]
 name = "gluon-rpc"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon_pallet#710a9bc059978df96e31091e7e2a278b61e29a84"
+source = "git+https://github.com/tearust/gluon_pallet#81e5bde5ae666e2a3324bf22e123d0d7b2daeb3e"
 dependencies = [
  "gluon-runtime-api",
  "jsonrpc-core",
@@ -1896,7 +1896,7 @@ dependencies = [
 [[package]]
 name = "gluon-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon_pallet#710a9bc059978df96e31091e7e2a278b61e29a84"
+source = "git+https://github.com/tearust/gluon_pallet#81e5bde5ae666e2a3324bf22e123d0d7b2daeb3e"
 dependencies = [
  "sp-api",
  "sp-std",
@@ -3643,10 +3643,11 @@ dependencies = [
 [[package]]
 name = "pallet-gluon"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon_pallet#710a9bc059978df96e31091e7e2a278b61e29a84"
+source = "git+https://github.com/tearust/gluon_pallet#81e5bde5ae666e2a3324bf22e123d0d7b2daeb3e"
 dependencies = [
  "frame-support",
  "frame-system",
+ "hex",
  "pallet-balances",
  "pallet-randomness-collective-flip",
  "parity-scale-codec",
@@ -3680,6 +3681,22 @@ dependencies = [
  "sp-runtime",
  "sp-session",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-multisig"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "753a016a076edf8f3d5e6483092034f9c62efd3fbf86bdefbe813cb91d065777"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -6934,6 +6951,7 @@ dependencies = [
  "pallet-balances",
  "pallet-gluon",
  "pallet-grandpa",
+ "pallet-multisig",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-tea",
@@ -7479,7 +7497,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bfd5b7557925ce778ff9b9ef90e3ade34c524b5ff10e239c69a42d546d2af56"
 dependencies = [
- "rand 0.5.6",
+ "rand 0.7.3",
 ]
 
 [[package]]

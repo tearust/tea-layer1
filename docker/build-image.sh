@@ -12,6 +12,6 @@ mkdir -p tmp
 
 cp ./docker/target/release/tea-layer1 tmp
 
-docker build -t tearust/tea-layer1:latest .
+docker build -t tearust/tea-layer1:gluon .
 
 rm -rf tmp

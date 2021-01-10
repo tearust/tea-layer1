@@ -31,6 +31,8 @@ hex-literal = "0.2.1"
 tea-runtime = { path = '../runtime', version = '2.0.0' }
 gluon-rpc = { git = 'https://github.com/tearust/gluon_pallet', version = '2.0.0' }
 gluon-runtime-api = { git = 'https://github.com/tearust/gluon_pallet', version = '2.0.0' }
+#gluon-rpc = { path = "../../gluon-pallet/gluon/rpc", default-features = false, version = '2.0.0' }
+#gluon-runtime-api = { path = "../../gluon-pallet/gluon/runtime-api", default-features = false, version = '2.0.0' }
 
 # Substrate dependencies
 frame-benchmarking = '2.0.0'

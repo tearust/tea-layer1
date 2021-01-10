@@ -111,6 +111,7 @@
     "keyType": "Cid",
     "n": "u32",
     "k": "u32",
+    "delegatorNonceHash": "Cid",
     "delegatorNonceRsa": "Cid",
     "p1": "Cid"
   }
