@@ -141,7 +141,7 @@ pub struct ManifestInfo {
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
 pub struct RuntimeActivity<BlockNumber> {
     pub tea_id: TeaPubKey,
-    pub cid: Cid,
+    pub cid: Option<Cid>,
     pub ephemeral_id: TeaPubKey,
     pub update_height: BlockNumber,
 }
@@ -598,20 +598,19 @@ decl_module! {
         pub fn update_runtime_activity(
 		    origin,
             tea_id: TeaPubKey,
-            cid: Cid,
+            cid: Option<Cid>,
             ephemeral_id: TeaPubKey,
             singature: Vec<u8>,
-            delegator_pubkey: TeaPubKey,
+            delegator_pubkey: Option<TeaPubKey>,
 		) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
 
             // Verify signature
             let ed25519_pubkey = ed25519::Public(ephemeral_id);
-            let payload = [&tea_id[..], &cid[..]].concat();
             ensure!(singature.len() == 64, Error::<T>::InvalidSig);
             let ed25519_sig = ed25519::Signature::from_slice(&singature[..]);
-            ensure!(sp_io::crypto::ed25519_verify(&ed25519_sig, &payload[..], &ed25519_pubkey),
+            ensure!(sp_io::crypto::ed25519_verify(&ed25519_sig, &tea_id[..], &ed25519_pubkey),
                     Error::<T>::InvalidSig);
 
             let current_block_number = <frame_system::Module<T>>::block_number();
@@ -624,20 +623,25 @@ decl_module! {
 
             RuntimeActivities::<T>::insert(&tea_id, &runtime_activity);
 
-            let mut exist = false;
-            let current_block_number = <frame_system::Module<T>>::block_number();
-            let mut delegates = Delegates::<T>::get();
-            for (d, _t, b) in &mut delegates {
-                if d == &delegator_pubkey {
-                    *b = current_block_number;
-                    exist = true;
-                    break;
-                }
-            }
-            if !exist {
-                delegates.push((delegator_pubkey, tea_id, current_block_number));
-            }
-            Delegates::<T>::put(delegates);
+			match delegator_pubkey {
+			    None =>{},
+				Some(pubkey) => {
+                    let mut exist = false;
+                    let current_block_number = <frame_system::Module<T>>::block_number();
+                    let mut delegates = Delegates::<T>::get();
+                    for (d, _t, b) in &mut delegates {
+                        if d == &pubkey {
+                            *b = current_block_number;
+                            exist = true;
+                            break;
+                        }
+                    }
+                    if !exist {
+                        delegates.push((pubkey, tea_id, current_block_number));
+                    }
+                    Delegates::<T>::put(delegates);
+				 }
+			}
 
             Self::deposit_event(RawEvent::UpdateRuntimeActivity(sender, runtime_activity));
 
