@@ -173,6 +173,9 @@ decl_storage! {
 		DepositMap get(fn deposit_map):
 			map hasher(twox_64_concat) (T::AccountId, TeaPubKey) =>
 			    Option<Deposit<BalanceOf<T>, T::BlockNumber>>;
+
+        // (rsa_pubkey, tea_id, block_number)
+		Delegates get(fn delegates): Vec<(TeaPubKey, TeaPubKey, T::BlockNumber)>;
 	}
 
 	add_extra_genesis {
@@ -598,11 +601,12 @@ decl_module! {
             cid: Cid,
             ephemeral_id: TeaPubKey,
             singature: Vec<u8>,
+            delegator_pubkey: TeaPubKey,
 		) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
 
-            // // Verify signature
+            // Verify signature
             let ed25519_pubkey = ed25519::Public(ephemeral_id);
             let payload = [&tea_id[..], &cid[..]].concat();
             ensure!(singature.len() == 64, Error::<T>::InvalidSig);
@@ -619,6 +623,22 @@ decl_module! {
             };
 
             RuntimeActivities::<T>::insert(&tea_id, &runtime_activity);
+
+            let mut exist = false;
+            let current_block_number = <frame_system::Module<T>>::block_number();
+            let mut delegates = Delegates::<T>::get();
+            for (d, _t, b) in &mut delegates {
+                if d == &delegator_pubkey {
+                    *b = current_block_number;
+                    exist = true;
+                    break;
+                }
+            }
+            if !exist {
+                delegates.push((delegator_pubkey, tea_id, current_block_number));
+            }
+            Delegates::<T>::put(delegates);
+
             Self::deposit_event(RawEvent::UpdateRuntimeActivity(sender, runtime_activity));
 
             Ok(())
