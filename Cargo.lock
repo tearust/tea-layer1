@@ -1879,7 +1879,7 @@ dependencies = [
 [[package]]
 name = "gluon-rpc"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon_pallet#81e5bde5ae666e2a3324bf22e123d0d7b2daeb3e"
+source = "git+https://github.com/tearust/gluon_pallet#8ccbd0979f820d2607787ed70e6308067ad55c4d"
 dependencies = [
  "gluon-runtime-api",
  "jsonrpc-core",
@@ -1896,7 +1896,7 @@ dependencies = [
 [[package]]
 name = "gluon-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon_pallet#81e5bde5ae666e2a3324bf22e123d0d7b2daeb3e"
+source = "git+https://github.com/tearust/gluon_pallet#8ccbd0979f820d2607787ed70e6308067ad55c4d"
 dependencies = [
  "sp-api",
  "sp-std",
@@ -3643,7 +3643,7 @@ dependencies = [
 [[package]]
 name = "pallet-gluon"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon_pallet#81e5bde5ae666e2a3324bf22e123d0d7b2daeb3e"
+source = "git+https://github.com/tearust/gluon_pallet#8ccbd0979f820d2607787ed70e6308067ad55c4d"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6932,7 +6932,25 @@ dependencies = [
  "structopt",
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
+ "tea-rpc",
  "tea-runtime",
+ "tea-runtime-api",
+]
+
+[[package]]
+name = "tea-rpc"
+version = "2.0.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+ "tea-runtime-api",
 ]
 
 [[package]]
@@ -6973,6 +6991,16 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder-runner",
+ "tea-runtime-api",
+]
+
+[[package]]
+name = "tea-runtime-api"
+version = "2.0.0"
+dependencies = [
+ "serde_json",
+ "sp-api",
+ "sp-std",
 ]
 
 [[package]]

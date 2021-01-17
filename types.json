@@ -79,9 +79,10 @@
   },
   "RuntimeActivity": {
     "teaId": "TeaPubKey",
-    "cid": "Cid",
+    "cid": "Option<Cid>",
     "ephemeralId": "TeaPubKey",
-    "updateHeight": "BlockNumber"
+    "updateHeight": "BlockNumber",
+    "delegatorPubKey": "Option<TeaPubKey>"
   },
   "TransferAssetTask": {
     "from": "Cid",

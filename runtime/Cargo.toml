@@ -27,6 +27,8 @@ serde = { features = ['derive'], optional = true, version = '1.0.101' }
 # local dependencies
 pallet-template = { path = '../pallets/template', default-features = false, version = '2.0.0' }
 pallet-tea = { path = '../pallets/tea', default-features = false, version = '2.0.0' }
+tea-runtime-api = { path = '../pallets/tea/runtime-api', default-features = false, version = '2.0.0' }
+
 pallet-gluon = { git = 'https://github.com/tearust/gluon_pallet', default-features = false , version = '2.0.0' }
 gluon-runtime-api = { git = 'https://github.com/tearust/gluon_pallet', default-features = false,  version = '2.0.0' }
 #pallet-gluon = { path = '../../gluon-pallet/gluon', default-features = false, version = '2.0.0' }
@@ -92,6 +94,7 @@ std = [
     'pallet-tea/std',
     'pallet-gluon/std',
     'gluon-runtime-api/std',
+    'tea-runtime-api/std',
 	"pallet-multisig/std",
 	'sp-api/std',
     'sp-block-builder/std',

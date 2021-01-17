@@ -380,6 +380,23 @@ impl_runtime_apis! {
 		fn get_delegates(start: u32, count: u32) -> Vec<[u8; 32]> {
 			Gluon::get_delegates(start, count)
 		}
+
+		fn encode_account_generation_without_p3(
+        	key_ype: Vec<u8>,
+        	n: u32,
+        	k: u32,
+        	delegator_nonce_hash: Vec<u8>,
+        	delegator_nonce_rsa: Vec<u8>,
+        	p1: Vec<u8>
+        ) -> Vec<u8> {
+        	Gluon::encode_account_generation_without_p3(key_ype, n, k, delegator_nonce_hash, delegator_nonce_rsa, p1)
+        }
+	}
+
+	impl tea_runtime_api::TeaApi<Block> for Runtime {
+		fn get_delegates(start: u32, count: u32) -> Vec<([u8; 32], [u8; 32])> {
+			Tea::get_delegates(start, count)
+		}
 	}
 
 	impl sp_api::Core<Block> for Runtime {

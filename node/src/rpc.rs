@@ -36,6 +36,7 @@ pub fn create_full<C, P>(
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
 	C::Api: gluon_runtime_api::GluonApi<Block>,
+	C::Api: tea_runtime_api::TeaApi<Block>,
 	P: TransactionPool + 'static,
 {
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
@@ -61,8 +62,10 @@ pub fn create_full<C, P>(
 	// to call into the runtime.
 	// `io.extend_with(YourRpcTrait::to_delegate(YourRpcStruct::new(ReferenceToClient, ...)));`
 	io.extend_with(
-		gluon_rpc::GluonApi::to_delegate(gluon_rpc::Gluon::new(client))
+		gluon_rpc::GluonApi::to_delegate(gluon_rpc::Gluon::new(client.clone()))
 	);
-
+	io.extend_with(
+		tea_rpc::TeaApi::to_delegate(tea_rpc::Tea::new(client))
+	);
 	io
 }

@@ -655,6 +655,30 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+    pub fn get_delegates(
+        start: u32,
+        count: u32
+    ) -> Vec<([u8; 32], [u8; 32])> {
+        let delegates = Delegates::<T>::get();
+        let current_block_number = <frame_system::Module<T>>::block_number();
+        let mut result: Vec<([u8; 32], [u8; 32])> = vec![];
+        let mut index: u32 = 0;
+        for (d, t, b) in delegates {
+            if current_block_number - b < RUNTIME_ACTIVITY_THRESHOLD.into() {
+                index = index + 1;
+                if index > start {
+                    result.push((d.into(), t.into()));
+                    let size = result.len();
+                    let delegates_count = count as usize;
+                    if size == delegates_count {
+                        break;
+                    }
+                }
+            }
+        }
+        result
+    }
+
     fn update_runtime_status(block_number: T::BlockNumber) {
         for (tea_id, mut node) in Nodes::<T>::iter() {
             if node.status == NodeStatus::Active {
