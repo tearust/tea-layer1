@@ -37,6 +37,7 @@ pub use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 	},
 };
+pub use pallet_gluon::AccountGenerationDataWithoutP3;
 
 /// Import the template pallet.
 pub use pallet_template;
@@ -75,6 +76,8 @@ pub type Hash = sp_core::H256;
 
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
+
+pub type AccountGenerationDataWithoutP3Tea = AccountGenerationDataWithoutP3;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -376,7 +379,7 @@ pub type Executive = frame_executive::Executive<
 
 impl_runtime_apis! {
 	// Here we implement our custom runtime API.
-	impl gluon_runtime_api::GluonApi<Block> for Runtime {
+	impl gluon_runtime_api::GluonApi<Block, AccountGenerationDataWithoutP3> for Runtime {
 		fn get_delegates(start: u32, count: u32) -> Vec<[u8; 32]> {
 			Gluon::get_delegates(start, count)
 		}
@@ -390,6 +393,12 @@ impl_runtime_apis! {
         	p1: Vec<u8>
         ) -> Vec<u8> {
         	Gluon::encode_account_generation_without_p3(key_ype, n, k, delegator_nonce_hash, delegator_nonce_rsa, p1)
+        }
+
+        fn encode_task1(
+        task: AccountGenerationDataWithoutP3,
+        ) -> Vec<u8> {
+			Gluon::encode_task1(task)
         }
 	}
 

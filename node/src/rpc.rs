@@ -7,13 +7,12 @@
 
 use std::sync::Arc;
 
-use tea_runtime::{opaque::Block, AccountId, Balance, Index};
+use tea_runtime::{opaque::Block, AccountId, Balance, Index, AccountGenerationDataWithoutP3Tea};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::{Error as BlockChainError, HeaderMetadata, HeaderBackend};
 use sp_block_builder::BlockBuilder;
 pub use sc_rpc_api::DenyUnsafe;
 use sp_transaction_pool::TransactionPool;
-
 
 /// Full client dependencies.
 pub struct FullDeps<C, P> {
@@ -35,7 +34,7 @@ pub fn create_full<C, P>(
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
-	C::Api: gluon_runtime_api::GluonApi<Block>,
+	C::Api: gluon_runtime_api::GluonApi<Block, AccountGenerationDataWithoutP3Tea>,
 	C::Api: tea_runtime_api::TeaApi<Block>,
 	P: TransactionPool + 'static,
 {

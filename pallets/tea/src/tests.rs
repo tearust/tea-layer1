@@ -16,6 +16,7 @@ use sp_core::{
 };
 use std::str::FromStr;
 use std::vec::Vec;
+use sp_runtime::traits::Verify;
 
 #[test]
 fn it_works_for_default_value() {
@@ -123,6 +124,48 @@ fn get_tea_id_and_sig() {
     let message = hex!("c7e016fad0796bb68594e49a6ef1942cf7e73497e69edb32d19ba2fab3696597");
     let signature = &pair.sign(&message[..]);
     println!("sig: {:?}", signature);
+}
+
+#[test]
+fn ed25519_sign_and_verify() {
+    let pp = ed25519::Pair::from_string(&format!("//{}", "Bob"), None);
+    let mut pair = ed25519::Pair::from_seed(&hex!(
+        "119c37b9aa65572ad9e24dd49c4f4da5330fe476f3313c560ffc67888f92b758"
+    ));
+    match pp {
+        Ok(p) => {
+            pair = p;
+        }
+        Err(_e) => {
+            println!("failed to parse account");
+        }
+    }
+    let public = pair.public();
+    println!("pub: {:?}", public);
+    let message = hex!("df38cb4f12479041c8e8d238109ef2a150b017f382206e24fee932e637c2db7b");
+    println!("message: {:?}", message);
+    let signature = &pair.sign(&message[..]);
+    assert!(signature.verify(&message[..], &public));
+    println!("sig: {:?}", signature);
+    assert!(ed25519::Pair::verify(
+        &signature,
+        &message[..],
+        &public
+    ));
+
+    let tea_id = hex!("df38cb4f12479041c8e8d238109ef2a150b017f382206e24fee932e637c2db7b");
+    println!("tea_id:{:?}", tea_id);
+    let ed25519_pubkey = ed25519::Public(hex!("d17c2d7823ebf260fd138f2d7e27d114c0145d968b5ff5006125f2414fadae69"));
+    println!("publicKey:{:?}", ed25519_pubkey);
+    let signature = hex!("36b3051088f0b81774c1f7c273cb95e626247a48a4a05d35ef31ca5f36bb548c4e064a4188d8fc806e452d2a2014b720dc70a60f70814e2b064e87f3df561e01");
+    let signature = ed25519::Signature::from_raw(signature);
+    println!("sig: {:?}", signature);
+    assert!(ed25519::Pair::verify(
+        &signature,
+        &tea_id[..],
+        &ed25519_pubkey
+    ));
+    assert!(signature.verify(&tea_id[..], &ed25519_pubkey));
 }
 
 #[test]

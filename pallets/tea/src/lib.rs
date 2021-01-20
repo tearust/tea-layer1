@@ -21,6 +21,7 @@ use sp_io::hashing::blake2_256;
 use sp_core::{ed25519, U256};
 use pallet_balances as balances;
 use sp_runtime::traits::CheckedAdd;
+use sp_runtime::traits::Verify;
 
 #[cfg(test)]
 mod mock;
@@ -596,6 +597,7 @@ decl_module! {
 
 		#[weight = 100]
         pub fn update_runtime_activity(
+
 		    origin,
             tea_id: TeaPubKey,
             cid: Option<Cid>,
@@ -608,8 +610,9 @@ decl_module! {
 
             // Verify signature
             let ed25519_pubkey = ed25519::Public(ephemeral_id);
-            ensure!(singature.len() == 64, Error::<T>::InvalidSig);
+            ensure!(singature.len() == 64, Error::<T>::InvalidSignatureLength);
             let ed25519_sig = ed25519::Signature::from_slice(&singature[..]);
+            // ensure!(ed25519_sig.verify(&tea_id[..], &ed25519_pubkey), Error::<T>::InvalidSig);
             ensure!(sp_io::crypto::ed25519_verify(&ed25519_sig, &tea_id[..], &ed25519_pubkey),
                     Error::<T>::InvalidSig);
 
