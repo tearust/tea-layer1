@@ -1879,12 +1879,14 @@ dependencies = [
 [[package]]
 name = "gluon-rpc"
 version = "2.0.0"
+source = "git+https://github.com/tearust/gluon-pallet#0c3568138ed5f34d9477fd8833ef18c99a7b1731"
 dependencies = [
- "gluon-runtime-api 2.0.0",
+ "gluon-runtime-api",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
  "parity-scale-codec",
+ "serde",
  "sp-api",
  "sp-blockchain",
  "sp-rpc",
@@ -1894,16 +1896,7 @@ dependencies = [
 [[package]]
 name = "gluon-runtime-api"
 version = "2.0.0"
-dependencies = [
- "parity-scale-codec",
- "sp-api",
- "sp-std",
-]
-
-[[package]]
-name = "gluon-runtime-api"
-version = "2.0.0"
-source = "git+https://github.com/tearust/gluon_pallet#adcea52eb1350b6b4025659003f9e6ec213e7c62"
+source = "git+https://github.com/tearust/gluon-pallet#0c3568138ed5f34d9477fd8833ef18c99a7b1731"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -3651,7 +3644,7 @@ dependencies = [
 [[package]]
 name = "pallet-gluon"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon_pallet#adcea52eb1350b6b4025659003f9e6ec213e7c62"
+source = "git+https://github.com/tearust/gluon-pallet#0c3568138ed5f34d9477fd8833ef18c99a7b1731"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6909,7 +6902,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "gluon-rpc",
- "gluon-runtime-api 2.0.0",
+ "gluon-runtime-api",
  "hex",
  "hex-literal 0.2.1",
  "jsonrpc-core",
@@ -6971,7 +6964,7 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
- "gluon-runtime-api 2.0.0 (git+https://github.com/tearust/gluon_pallet)",
+ "gluon-runtime-api",
  "hex-literal 0.3.1",
  "pallet-aura",
  "pallet-balances",
