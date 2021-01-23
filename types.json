@@ -96,8 +96,14 @@
   },
   "SignTransactionData": {
     "dataAdhoc": "TxData",
-    "delegator_nonce_hash": "Cid",
-    "delegator_nonce_rsa": "Cid"
+    "delegatorNonceHash": "Cid",
+    "delegatorNonceRsa": "Cid"
+  },
+  "SignTransactionTask": {
+    "taskId": "Cid",
+    "multisigAddress": "Cid",
+    "p1Signature": "TxData",
+    "taskData": "SignTransactionData"
   },
   "SignTransactionResult": {
     "taskId": "Cid",
