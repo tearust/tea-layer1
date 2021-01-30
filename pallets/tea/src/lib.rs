@@ -21,7 +21,6 @@ use sp_io::hashing::blake2_256;
 use sp_core::{ed25519, U256};
 use pallet_balances as balances;
 use sp_runtime::traits::CheckedAdd;
-use sp_runtime::traits::Verify;
 
 #[cfg(test)]
 mod mock;
