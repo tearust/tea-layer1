@@ -8,6 +8,6 @@ use sp_std::prelude::*;
 // runtime amalgamator file (the `runtime/src/lib.rs`)
 sp_api::decl_runtime_apis! {
     pub trait TeaApi {
-        fn get_delegates(start: u32, count: u32) -> Vec<([u8; 32], [u8; 32])>;
+        fn get_delegates(start: u32, count: u32) -> Vec<([u8; 32], [u8; 32], Vec<u8>)>;
     }
 }
