@@ -6,6 +6,7 @@
   "Cid": "Bytes",
   "TxData": "Bytes",
   "ClientPubKey": "Bytes",
+  "MultiSigAccount": "Bytes",
   "Signature": "Bytes",
   "KeyType": "Bytes",
   "RefNum": "H256",
