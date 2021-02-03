@@ -29,10 +29,10 @@ pallet-template = { path = '../pallets/template', default-features = false, vers
 pallet-tea = { path = '../pallets/tea', default-features = false, version = '2.0.0' }
 tea-runtime-api = { path = '../pallets/tea/runtime-api', default-features = false, version = '2.0.0' }
 
-pallet-gluon = { git = 'https://github.com/tearust/gluon-pallet', default-features = false , version = '2.0.0' }
-gluon-runtime-api = { git = 'https://github.com/tearust/gluon-pallet', default-features = false,  version = '2.0.0' }
-#pallet-gluon = { path = '../../gluon-pallet/gluon', default-features = false, version = '2.0.0' }
-#gluon-runtime-api = { path = "../../gluon-pallet/gluon/runtime-api", default-features = false, version = '2.0.0' }
+#pallet-gluon = { git = 'https://github.com/tearust/gluon-pallet', default-features = false , version = '2.0.0' }
+#gluon-runtime-api = { git = 'https://github.com/tearust/gluon-pallet', default-features = false,  version = '2.0.0' }
+pallet-gluon = { path = '../../gluon-pallet/gluon', default-features = false, version = '2.0.0' }
+gluon-runtime-api = { path = "../../gluon-pallet/gluon/runtime-api", default-features = false, version = '2.0.0' }
 
 pallet-multisig = { default-features = false, version = '2.0.0' }
 

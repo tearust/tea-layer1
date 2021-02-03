@@ -1879,14 +1879,12 @@ dependencies = [
 [[package]]
 name = "gluon-rpc"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon-pallet#0c3568138ed5f34d9477fd8833ef18c99a7b1731"
 dependencies = [
  "gluon-runtime-api",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
  "parity-scale-codec",
- "serde",
  "sp-api",
  "sp-blockchain",
  "sp-rpc",
@@ -1896,7 +1894,6 @@ dependencies = [
 [[package]]
 name = "gluon-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon-pallet#0c3568138ed5f34d9477fd8833ef18c99a7b1731"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -3644,7 +3641,6 @@ dependencies = [
 [[package]]
 name = "pallet-gluon"
 version = "2.0.0"
-source = "git+https://github.com/tearust/gluon-pallet#0c3568138ed5f34d9477fd8833ef18c99a7b1731"
 dependencies = [
  "frame-support",
  "frame-system",
