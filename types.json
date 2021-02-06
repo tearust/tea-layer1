@@ -113,7 +113,11 @@
   "Asset": {
     "owner": "Cid",
     "p2": "Cid",
-    "deploymentIds": "Vec<Cid>"
+    "deploymentIds": "Vec<Cid>",
+    "web": "AccountId",
+    "app": "AccountId",
+    "multiSigAccount": "MultiSigAccount",
+    "dataAdhoc": "AccountGenerationDataWithoutP3"
   },
   "AccountGenerationDataWithoutP3": {
     "keyType": "Cid",

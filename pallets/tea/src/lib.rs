@@ -655,6 +655,7 @@ decl_module! {
 	}
 }
 
+
 impl<T: Trait> Module<T> {
     pub fn get_delegates(
         start: u32,
