@@ -175,7 +175,7 @@ decl_storage! {
 			    Option<Deposit<BalanceOf<T>, T::BlockNumber>>;
 
         // (rsa_pubkey, tea_id, block_number)
-		Delegates get(fn delegates): Vec<(TeaPubKey, TeaPubKey, T::BlockNumber)>;
+		Delegates get(fn delegates): Vec<(Cid, TeaPubKey, T::BlockNumber)>;
 	}
 
 	add_extra_genesis {
@@ -601,7 +601,7 @@ decl_module! {
             cid: Option<Cid>,
             ephemeral_id: TeaPubKey,
             singature: Vec<u8>,
-            delegator_pubkey: Option<TeaPubKey>,
+            delegator_pubkey: Option<Cid>,
 		) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
@@ -659,10 +659,10 @@ impl<T: Trait> Module<T> {
     pub fn get_delegates(
         start: u32,
         count: u32
-    ) -> Vec<([u8; 32], [u8; 32], Vec<u8>)> {
+    ) -> Vec<(Vec<u8>, [u8; 32], Vec<u8>)> {
         let delegates = Delegates::<T>::get();
         let current_block_number = <frame_system::Module<T>>::block_number();
-        let mut result: Vec<([u8; 32], [u8; 32], Vec<u8>)> = vec![];
+        let mut result: Vec<(Vec<u8>, [u8; 32], Vec<u8>)> = vec![];
         let mut index: u32 = 0;
         for (d, t, b) in delegates {
             if current_block_number - b < RUNTIME_ACTIVITY_THRESHOLD.into() {
@@ -670,7 +670,7 @@ impl<T: Trait> Module<T> {
                 if index > start {
                     match Nodes::<T>::get(&t) {
                         Some(node) => {
-                            result.push((d.into(), t.into(), node.peer_id));
+                            result.push((d, t.into(), node.peer_id));
                             let size = result.len();
                             let delegates_count = count as usize;
                             if size == delegates_count {

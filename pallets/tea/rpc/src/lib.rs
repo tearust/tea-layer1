@@ -12,7 +12,7 @@ use std::sync::Arc;
 pub trait TeaApi<BlockHash> {
     #[rpc(name = "tea_getDelegates")]
     fn get_delegates(&self, start: u32, count: u32, at: Option<BlockHash>)
-        -> Result<Vec<([u8; 32], [u8; 32], Vec<u8>)>>;
+        -> Result<Vec<(Vec<u8>, [u8; 32], Vec<u8>)>>;
 }
 
 /// A struct that implements the `TeaApi`.
@@ -46,7 +46,7 @@ where
         start: u32,
         count: u32,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<([u8; 32], [u8; 32], Vec<u8>)>> {
+    ) -> Result<Vec<(Vec<u8>, [u8; 32], Vec<u8>)>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.

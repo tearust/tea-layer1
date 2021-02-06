@@ -403,7 +403,7 @@ impl_runtime_apis! {
 	}
 
 	impl tea_runtime_api::TeaApi<Block> for Runtime {
-		fn get_delegates(start: u32, count: u32) -> Vec<([u8; 32], [u8; 32], Vec<u8>)> {
+		fn get_delegates(start: u32, count: u32) -> Vec<(Vec<u8>, [u8; 32], Vec<u8>)> {
 			Tea::get_delegates(start, count)
 		}
 	}
