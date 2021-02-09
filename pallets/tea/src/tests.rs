@@ -19,6 +19,22 @@ use std::vec::Vec;
 use sp_runtime::traits::Verify;
 
 #[test]
+fn test_schnorr() {
+    let message = b"We are legion!";
+    let public_data: [u8; 32] = [122, 33, 114, 203, 102, 194, 85, 245, 50, 26, 127, 136, 99, 76, 50, 238, 21, 2, 127, 71, 35, 62, 27, 178, 55, 118, 178, 46, 221, 206, 11, 93];
+    let public = sr25519::Public::from_raw(public_data);
+
+    let signature_data: [u8; 64] = [8, 79, 14, 237, 125, 143, 75, 146, 208, 134, 44, 92, 249, 82, 205, 23, 249, 20, 163, 223, 28, 4, 203, 100, 24, 87, 206, 82, 53, 179, 243, 11, 81, 211, 221, 121, 187, 92, 211, 85, 26, 76, 11, 177, 240, 58, 145, 40, 61, 4, 239, 254, 221, 182, 165, 211, 219, 23, 199, 40, 110, 54, 62, 132];
+    let signature = sr25519::Signature::from_raw(signature_data);
+
+    println!("public: {:?}", public);
+    println!("signature: {:?}", signature);
+    assert!(sr25519::Pair::verify(&signature, &message[..], &public));
+    assert!(signature.verify(&message[..], &public));
+    assert!(sp_io::crypto::sr25519_verify(&signature, &message[..], &public));
+}
+
+#[test]
 fn it_works_for_default_value() {
     new_test_ext().execute_with(|| {
         assert!(true);
