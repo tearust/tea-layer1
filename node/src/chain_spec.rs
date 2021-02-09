@@ -171,7 +171,9 @@ fn testnet_genesis(
 				(hex!("2754d7e9c73ced5b302e12464594110850980027f8f83c469e8145eef59220b6"),
 				 [0u8; 32]),
 				(hex!("c9380fde1ba795fc656ab08ab4ef4482cf554790fd3abcd4642418ae8fb5fd52"),
-				 [0u8; 32])
+				 [0u8; 32]),
+				(hex!("bd1c0ec25a96172791fe16c28323ceb0c515f17bcd11da4fb183ffd7e6fbb769"),
+				 [0u8; 32]),
 			],
 		}),
 		pallet_gluon: Some(GluonConfig {}),
