@@ -14,24 +14,36 @@ use sp_core::{
     hash::{H256, H512},
     sr25519, Pair,
 };
+use sp_runtime::traits::Verify;
 use std::str::FromStr;
 use std::vec::Vec;
-use sp_runtime::traits::Verify;
 
 #[test]
 fn test_schnorr() {
     let message = b"We are legion!";
-    let public_data: [u8; 32] = [122, 33, 114, 203, 102, 194, 85, 245, 50, 26, 127, 136, 99, 76, 50, 238, 21, 2, 127, 71, 35, 62, 27, 178, 55, 118, 178, 46, 221, 206, 11, 93];
+    let public_data: [u8; 32] = [
+        122, 33, 114, 203, 102, 194, 85, 245, 50, 26, 127, 136, 99, 76, 50, 238, 21, 2, 127, 71,
+        35, 62, 27, 178, 55, 118, 178, 46, 221, 206, 11, 93,
+    ];
     let public = sr25519::Public::from_raw(public_data);
 
-    let signature_data: [u8; 64] = [8, 79, 14, 237, 125, 143, 75, 146, 208, 134, 44, 92, 249, 82, 205, 23, 249, 20, 163, 223, 28, 4, 203, 100, 24, 87, 206, 82, 53, 179, 243, 11, 81, 211, 221, 121, 187, 92, 211, 85, 26, 76, 11, 177, 240, 58, 145, 40, 61, 4, 239, 254, 221, 182, 165, 211, 219, 23, 199, 40, 110, 54, 62, 132];
+    let signature_data: [u8; 64] = [
+        8, 79, 14, 237, 125, 143, 75, 146, 208, 134, 44, 92, 249, 82, 205, 23, 249, 20, 163, 223,
+        28, 4, 203, 100, 24, 87, 206, 82, 53, 179, 243, 11, 81, 211, 221, 121, 187, 92, 211, 85,
+        26, 76, 11, 177, 240, 58, 145, 40, 61, 4, 239, 254, 221, 182, 165, 211, 219, 23, 199, 40,
+        110, 54, 62, 132,
+    ];
     let signature = sr25519::Signature::from_raw(signature_data);
 
     println!("public: {:?}", public);
     println!("signature: {:?}", signature);
     assert!(sr25519::Pair::verify(&signature, &message[..], &public));
     assert!(signature.verify(&message[..], &public));
-    assert!(sp_io::crypto::sr25519_verify(&signature, &message[..], &public));
+    assert!(sp_io::crypto::sr25519_verify(
+        &signature,
+        &message[..],
+        &public
+    ));
 }
 
 #[test]
@@ -126,7 +138,6 @@ fn test_delegate_sig_should_work() {
         &public
     ));
     assert!(signature.verify(&auth_payload[..], &public));
-
 }
 
 #[test]
@@ -163,15 +174,13 @@ fn ed25519_sign_and_verify() {
     let signature = &pair.sign(&message[..]);
     assert!(signature.verify(&message[..], &public));
     println!("sig: {:?}", signature);
-    assert!(ed25519::Pair::verify(
-        &signature,
-        &message[..],
-        &public
-    ));
+    assert!(ed25519::Pair::verify(&signature, &message[..], &public));
 
     let tea_id = hex!("df38cb4f12479041c8e8d238109ef2a150b017f382206e24fee932e637c2db7b");
     println!("tea_id:{:?}", tea_id);
-    let ed25519_pubkey = ed25519::Public(hex!("d17c2d7823ebf260fd138f2d7e27d114c0145d968b5ff5006125f2414fadae69"));
+    let ed25519_pubkey = ed25519::Public(hex!(
+        "d17c2d7823ebf260fd138f2d7e27d114c0145d968b5ff5006125f2414fadae69"
+    ));
     println!("publicKey:{:?}", ed25519_pubkey);
     let signature = hex!("36b3051088f0b81774c1f7c273cb95e626247a48a4a05d35ef31ca5f36bb548c4e064a4188d8fc806e452d2a2014b720dc70a60f70814e2b064e87f3df561e01");
     let signature = ed25519::Signature::from_raw(signature);

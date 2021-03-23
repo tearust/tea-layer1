@@ -1,5 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
+use frame_support::{
+    debug, decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
+    traits::{Currency, ExistenceRequirement, Randomness, WithdrawReason, WithdrawReasons},
+    IterableStorageMap, StorageMap,
+};
 /// A FRAME pallet template with necessary imports
 
 /// Feel free to remove or edit this file as needed.
@@ -9,18 +15,11 @@
 /// For more guidance on Substrate FRAME, see the example pallet
 /// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
 use frame_system::ensure_signed;
-use codec::{Decode, Encode};
-use frame_support::{
-    debug,
-    decl_event, decl_module, decl_storage, decl_error, dispatch,
-    StorageMap, IterableStorageMap, ensure,
-    traits::{Randomness, Currency, ExistenceRequirement,
-             WithdrawReason, WithdrawReasons}};
-use sp_std::prelude::*;
-use sp_io::hashing::blake2_256;
-use sp_core::{ed25519, U256};
 use pallet_balances as balances;
+use sp_core::{ed25519, U256};
+use sp_io::hashing::blake2_256;
 use sp_runtime::traits::CheckedAdd;
+use sp_std::prelude::*;
 
 #[cfg(test)]
 mod mock;
@@ -35,7 +34,8 @@ pub trait Trait: balances::Trait {
     type Currency: Currency<Self::AccountId>;
 }
 
-type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> =
+    <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
 pub type TeaPubKey = [u8; 32];
 
@@ -147,141 +147,141 @@ pub struct RuntimeActivity<BlockNumber> {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as TeaModule {
-	    Manifest get(fn manifest):
-	        map hasher(twox_64_concat) TeaPubKey => Option<Cid>;
+    trait Store for Module<T: Trait> as TeaModule {
+        Manifest get(fn manifest):
+            map hasher(twox_64_concat) TeaPubKey => Option<Cid>;
 
-		Nodes get(fn nodes):
-			map hasher(twox_64_concat) TeaPubKey => Option<Node<T::BlockNumber>>;
-		EphemeralIds get(fn ephemera_ids):
-		    map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
+        Nodes get(fn nodes):
+            map hasher(twox_64_concat) TeaPubKey => Option<Node<T::BlockNumber>>;
+        EphemeralIds get(fn ephemera_ids):
+            map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
         BootNodes get(fn boot_nodes):
             map hasher(twox_64_concat) TeaPubKey => TeaPubKey;
         BuildInNodes get(fn buildin_nodes):
             map hasher(twox_64_concat) TeaPubKey => Option<TeaPubKey>;
-		PeerIds get(fn peer_ids):
-		    map hasher(twox_64_concat) Vec<u8> => Option<TeaPubKey>;
+        PeerIds get(fn peer_ids):
+            map hasher(twox_64_concat) Vec<u8> => Option<TeaPubKey>;
 
-		RuntimeActivities get(fn runtime_activities):
-		    map hasher(twox_64_concat) TeaPubKey => Option<RuntimeActivity<T::BlockNumber>>;
+        RuntimeActivities get(fn runtime_activities):
+            map hasher(twox_64_concat) TeaPubKey => Option<RuntimeActivity<T::BlockNumber>>;
 
-		DataMap get(fn data_map):
-		    map hasher(blake2_128_concat) Cid => Option<Data>;
-		ServiceMap get(fn service_map):
-		    map hasher(blake2_128_concat) Cid => Option<Service>;
+        DataMap get(fn data_map):
+            map hasher(blake2_128_concat) Cid => Option<Data>;
+        ServiceMap get(fn service_map):
+            map hasher(blake2_128_concat) Cid => Option<Service>;
 
-		DepositMap get(fn deposit_map):
-			map hasher(twox_64_concat) (T::AccountId, TeaPubKey) =>
-			    Option<Deposit<BalanceOf<T>, T::BlockNumber>>;
+        DepositMap get(fn deposit_map):
+            map hasher(twox_64_concat) (T::AccountId, TeaPubKey) =>
+                Option<Deposit<BalanceOf<T>, T::BlockNumber>>;
 
         // (rsa_pubkey, tea_id, block_number)
-		Delegates get(fn delegates): Vec<(Cid, TeaPubKey, T::BlockNumber)>;
-	}
+        Delegates get(fn delegates): Vec<(Cid, TeaPubKey, T::BlockNumber)>;
+    }
 
-	add_extra_genesis {
-	    config(tpms): Vec<(TeaPubKey, TeaPubKey)>;
-		build(|config: &GenesisConfig| {
-			for (tea_id, ephemeral_id) in config.tpms.iter() {
-				let node = Node {
-				    tea_id: tea_id.clone(),
-				    ephemeral_id: *ephemeral_id,
-				    profile_cid: Vec::new(),
-				    urls: Vec::new(),
-				    peer_id: Vec::new(),
-				    create_time: 0.into(),
-				    update_time: 0.into(),
-				    ra_nodes: Vec::new(),
-				    status: NodeStatus::Active,
-				};
-				Nodes::<T>::insert(&tea_id, node);
-				BuildInNodes::insert(&tea_id, &tea_id);
-			}
-		})
-	}
+    add_extra_genesis {
+        config(tpms): Vec<(TeaPubKey, TeaPubKey)>;
+        build(|config: &GenesisConfig| {
+            for (tea_id, ephemeral_id) in config.tpms.iter() {
+                let node = Node {
+                    tea_id: tea_id.clone(),
+                    ephemeral_id: *ephemeral_id,
+                    profile_cid: Vec::new(),
+                    urls: Vec::new(),
+                    peer_id: Vec::new(),
+                    create_time: 0.into(),
+                    update_time: 0.into(),
+                    ra_nodes: Vec::new(),
+                    status: NodeStatus::Active,
+                };
+                Nodes::<T>::insert(&tea_id, node);
+                BuildInNodes::insert(&tea_id, &tea_id);
+            }
+        })
+    }
 }
 
 decl_event!(
-	pub enum Event<T>
-	where
-		AccountId = <T as frame_system::Trait>::AccountId,
-		Balance = BalanceOf<T>,
-		BlockNumber = <T as frame_system::Trait>::BlockNumber,
-	{
-		NewNodeJoined(AccountId, Node<BlockNumber>),
-		UpdateNodeProfile(AccountId, Node<BlockNumber>),
-		NewDataAdded(AccountId, Data),
-		NewServiceAdded(AccountId, Service),
-		NewDepositAdded(AccountId, Deposit<Balance, BlockNumber>),
-		SettleAccounts(AccountId, Bill<AccountId, Balance, BlockNumber>),
-		CommitRaResult(AccountId, RaResult),
-		UpdateManifest(AccountId, ManifestInfo),
-		UpdateRuntimeActivity(AccountId, RuntimeActivity<BlockNumber>),
-	}
+    pub enum Event<T>
+    where
+        AccountId = <T as frame_system::Trait>::AccountId,
+        Balance = BalanceOf<T>,
+        BlockNumber = <T as frame_system::Trait>::BlockNumber,
+    {
+        NewNodeJoined(AccountId, Node<BlockNumber>),
+        UpdateNodeProfile(AccountId, Node<BlockNumber>),
+        NewDataAdded(AccountId, Data),
+        NewServiceAdded(AccountId, Service),
+        NewDepositAdded(AccountId, Deposit<Balance, BlockNumber>),
+        SettleAccounts(AccountId, Bill<AccountId, Balance, BlockNumber>),
+        CommitRaResult(AccountId, RaResult),
+        UpdateManifest(AccountId, ManifestInfo),
+        UpdateRuntimeActivity(AccountId, RuntimeActivity<BlockNumber>),
+    }
 );
 
 // The pallet's errors
 decl_error! {
-	pub enum Error for Module<T: Trait> {
-	    NodeAlreadyExist,
-	    NodeNotExist,
-	    InvalidSig,
-	    InvalidExecutorSig,
-	    InvalidTeaSig,
-	    InvalidExpairTime,
-	    InvalidSignatureLength,
-	    DelegatorNotExist,
-	    InsufficientDeposit,
-	    DepositAlreadyExist,
-	    DepositNotExist,
-	    PaymentOverflow,
-	    NodeAlreadyActive,
-	    NotInRaNodes,
-	}
+    pub enum Error for Module<T: Trait> {
+        NodeAlreadyExist,
+        NodeNotExist,
+        InvalidSig,
+        InvalidExecutorSig,
+        InvalidTeaSig,
+        InvalidExpairTime,
+        InvalidSignatureLength,
+        DelegatorNotExist,
+        InsufficientDeposit,
+        DepositAlreadyExist,
+        DepositNotExist,
+        PaymentOverflow,
+        NodeAlreadyActive,
+        NotInRaNodes,
+    }
 }
 
 // The pallet's dispatchable functions.
 decl_module! {
-	/// The module declaration.
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		// Initializing errors
-		// this includes information about your errors in the node's metadata.
-		// it is needed only if you are using errors in your pallet
-		type Error = Error<T>;
+    /// The module declaration.
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        // Initializing errors
+        // this includes information about your errors in the node's metadata.
+        // it is needed only if you are using errors in your pallet
+        type Error = Error<T>;
 
-		// Initializing events
-		// this is needed only if you are using events in your pallet
-		fn deposit_event() = default;
+        // Initializing events
+        // this is needed only if you are using events in your pallet
+        fn deposit_event() = default;
 
         const TeaVersion: u32 = 5;
 
         #[weight = 100]
-		pub fn add_new_node(origin, tea_id: TeaPubKey) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
+        pub fn add_new_node(origin, tea_id: TeaPubKey) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
 
-		    ensure!(!Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeAlreadyExist);
-		    let current_block_number = <frame_system::Module<T>>::block_number();
+            ensure!(!Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeAlreadyExist);
+            let current_block_number = <frame_system::Module<T>>::block_number();
 
             let new_node = Node {
                 tea_id: tea_id.clone(),
-            	ephemeral_id: [0u8; 32],
-            	profile_cid: Vec::new(),
-            	urls: Vec::new(),
-            	peer_id: Vec::new(),
-            	create_time: current_block_number,
-            	update_time: current_block_number,
-            	ra_nodes: Vec::new(),
-            	status: NodeStatus::Pending,
+                ephemeral_id: [0u8; 32],
+                profile_cid: Vec::new(),
+                urls: Vec::new(),
+                peer_id: Vec::new(),
+                create_time: current_block_number,
+                update_time: current_block_number,
+                ra_nodes: Vec::new(),
+                status: NodeStatus::Pending,
             };
 
             Nodes::<T>::insert(tea_id, &new_node);
             Self::deposit_event(RawEvent::NewNodeJoined(sender, new_node));
 
             Ok(())
-		}
+        }
 
-		#[weight = 100]
-		pub fn update_manifest(origin, tea_id: TeaPubKey, manifest_cid: Cid) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
+        #[weight = 100]
+        pub fn update_manifest(origin, tea_id: TeaPubKey, manifest_cid: Cid) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
             <Manifest>::insert(tea_id, &manifest_cid);
 
             let manifest_info = ManifestInfo {
@@ -291,21 +291,21 @@ decl_module! {
             Self::deposit_event(RawEvent::UpdateManifest(sender, manifest_info));
 
             Ok(())
-		}
+        }
 
-		#[weight = 100]
-		pub fn remote_attestation(origin,
+        #[weight = 100]
+        pub fn remote_attestation(origin,
             tea_id: TeaPubKey,
             target_tea_id: TeaPubKey,
             is_pass: bool,
             signature: Vec<u8>,
-		) -> dispatch::DispatchResult {
+        ) -> dispatch::DispatchResult {
             let sender = ensure_signed(origin)?;
 
             // todo: verify signature
 
-		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
-		    ensure!(Nodes::<T>::contains_key(&target_tea_id), Error::<T>::NodeNotExist);
+            ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
+            ensure!(Nodes::<T>::contains_key(&target_tea_id), Error::<T>::NodeNotExist);
             let mut target_node = Nodes::<T>::get(&target_tea_id).unwrap();
             ensure!(target_node.status != NodeStatus::Active, Error::<T>::NodeAlreadyActive);
 
@@ -349,21 +349,21 @@ decl_module! {
             Self::deposit_event(RawEvent::CommitRaResult(sender, ra_result));
 
             Ok(())
-		}
+        }
 
         #[weight = 100]
-		pub fn update_node_profile(origin,
-		    tea_id: TeaPubKey,
-		    ephemeral_id: TeaPubKey,
-		    profile_cid: Vec<u8>,
-		    urls: Vec<Url>,
-		    peer_id: Vec<u8>,
-		    tea_sig: Vec<u8>,
-		) -> dispatch::DispatchResult {
-			let sender = ensure_signed(origin)?;
+        pub fn update_node_profile(origin,
+            tea_id: TeaPubKey,
+            ephemeral_id: TeaPubKey,
+            profile_cid: Vec<u8>,
+            urls: Vec<Url>,
+            peer_id: Vec<u8>,
+            tea_sig: Vec<u8>,
+        ) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
 
-		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
-		    // Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
+            ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
+            // Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
 
             // remove old node info
             let old_node = Nodes::<T>::get(&tea_id).unwrap();
@@ -406,45 +406,45 @@ decl_module! {
                 // }
             }
             let current_block_number = <frame_system::Module<T>>::block_number();
-		    let urls_count = urls.len();
+            let urls_count = urls.len();
             let node = Node {
                 tea_id: tea_id.clone(),
-            	ephemeral_id,
-            	profile_cid,
-            	urls,
-            	peer_id: peer_id.clone(),
-            	create_time: old_node.create_time,
-            	update_time: current_block_number,
-            	ra_nodes,
-            	status,
+                ephemeral_id,
+                profile_cid,
+                urls,
+                peer_id: peer_id.clone(),
+                create_time: old_node.create_time,
+                update_time: current_block_number,
+                ra_nodes,
+                status,
             };
             Nodes::<T>::insert(&tea_id, &node);
-	        EphemeralIds::insert(ephemeral_id, &tea_id);
+            EphemeralIds::insert(ephemeral_id, &tea_id);
 
             if urls_count > 0 {
                 <BootNodes>::insert(&tea_id, &tea_id);
             }
 
             if peer_id.len() > 0 {
-	            PeerIds::insert(peer_id, tea_id);
+                PeerIds::insert(peer_id, tea_id);
             }
 
             Self::deposit_event(RawEvent::UpdateNodeProfile(sender, node));
 
             Ok(())
-		}
+        }
 
         #[weight = 100]
-		pub fn add_new_data(
-		    origin,
-		    delegator_ephemeral_id: TeaPubKey,
-		    deployment_id: Cid,
-		    cid: Cid,
-		    description: Cid,
-		    cap_checker: Cid,
-		    ) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
-		    // ensure!(!Models::<T>::contains_key(&cid), Error::<T>::ModelAlreadyExist);
+        pub fn add_new_data(
+            origin,
+            delegator_ephemeral_id: TeaPubKey,
+            deployment_id: Cid,
+            cid: Cid,
+            description: Cid,
+            cap_checker: Cid,
+            ) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
+            // ensure!(!Models::<T>::contains_key(&cid), Error::<T>::ModelAlreadyExist);
             let new_data = Data {
                 delegator_ephemeral_id,
                 deployment_id,
@@ -456,18 +456,18 @@ decl_module! {
             Self::deposit_event(RawEvent::NewDataAdded(sender, new_data));
 
             Ok(())
-		}
+        }
 
         #[weight = 100]
-		pub fn add_new_service(
-		    origin,
-		    delegator_ephemeral_id: TeaPubKey,
-		    deployment_id: Cid,
-		    cid: Cid,
-		    cap_checker: Cid,
-		    ) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
-		    // ensure!(!Models::<T>::contains_key(&cid), Error::<T>::ModelAlreadyExist);
+        pub fn add_new_service(
+            origin,
+            delegator_ephemeral_id: TeaPubKey,
+            deployment_id: Cid,
+            cid: Cid,
+            cap_checker: Cid,
+            ) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
+            // ensure!(!Models::<T>::contains_key(&cid), Error::<T>::ModelAlreadyExist);
             let new_service = Service {
                 delegator_ephemeral_id,
                 deployment_id,
@@ -478,38 +478,38 @@ decl_module! {
             Self::deposit_event(RawEvent::NewServiceAdded(sender, new_service));
 
             Ok(())
-		}
+        }
 
-		#[weight = 100]
-		pub fn deposit(
-		    origin,
+        #[weight = 100]
+        pub fn deposit(
+            origin,
             delegator_tea_id: TeaPubKey,
             delegator_ephemeral_id: TeaPubKey,
             delegator_signature: Vec<u8>,
             amount: BalanceOf<T>,
             expire_time: T::BlockNumber,
-		) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
-		    // todo: ensure delegator_tea_id exist
+        ) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
+            // todo: ensure delegator_tea_id exist
 
-		    // todo: ensure delegator_ephemeral_id exist
+            // todo: ensure delegator_ephemeral_id exist
 
-		    // todo: ensure delegator_tea_id match delegator_ephemeral_id
+            // todo: ensure delegator_tea_id match delegator_ephemeral_id
 
-		    // todo: ensure delegator_signature valid
+            // todo: ensure delegator_signature valid
 
-		    // todo: ensure!(!DepositMap::<T>::contains_key((&sender, &delegator_tea_id)), Error::<T>::DepositAlreadyExist);
+            // todo: ensure!(!DepositMap::<T>::contains_key((&sender, &delegator_tea_id)), Error::<T>::DepositAlreadyExist);
 
             let _neg_imbalance = T::Currency::withdraw(&sender,
-		        amount,
-		        WithdrawReasons::except(WithdrawReason::TransactionPayment),
-		        ExistenceRequirement::AllowDeath)?;
+                amount,
+                WithdrawReasons::except(WithdrawReason::TransactionPayment),
+                ExistenceRequirement::AllowDeath)?;
 
             if DepositMap::<T>::contains_key((&sender, &delegator_tea_id)) {
                 let mut deposit = DepositMap::<T>::get((&sender, &delegator_tea_id)).unwrap();
                 // todo: verify if expire time GT old_expire_time + 100
-		        // ensure!(expire_time > deposit.expire_time + 100, Error::<T>::InvalidExpairTime);
-		        // ensure!(delegator_tea_id == deposit.delegator_tea_id, Error::<T>::InvalidSignatureLength);
+                // ensure!(expire_time > deposit.expire_time + 100, Error::<T>::InvalidExpairTime);
+                // ensure!(delegator_tea_id == deposit.delegator_tea_id, Error::<T>::InvalidSignatureLength);
                 deposit.amount += amount;
                 deposit.expire_time = expire_time;
                 DepositMap::<T>::insert((&sender, &delegator_tea_id), &deposit);
@@ -528,12 +528,12 @@ decl_module! {
             }
 
             Ok(())
-		}
+        }
 
-		#[weight = 100]
-		pub fn settle_accounts(
-		    origin,
-		    // use Lookup
+        #[weight = 100]
+        pub fn settle_accounts(
+            origin,
+            // use Lookup
             employer: T::AccountId,
             delegator_tea_id: TeaPubKey,
             delegator_ephemeral_id: TeaPubKey,//+
@@ -546,18 +546,18 @@ decl_module! {
             result_cid: Cid,
             executor_singature: Vec<u8>,
             bills: Vec<(T::AccountId, BalanceOf<T>)>,
-		) -> dispatch::DispatchResult {
-		    let sender = ensure_signed(origin)?;
+        ) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
 
-		    // debug::info!("bill: {:?}", bill);
+            // debug::info!("bill: {:?}", bill);
             // todo: check if the expired_time is lower than current block height, if false then treat the settle account
             //  as failed, and fire settle account request expired event
 
-		    ensure!(DepositMap::<T>::contains_key((&employer, &delegator_tea_id)), Error::<T>::DepositNotExist);
+            ensure!(DepositMap::<T>::contains_key((&employer, &delegator_tea_id)), Error::<T>::DepositNotExist);
 
             // todo: verify employer signature
             // let signer = employer.encode();
-		    // let public = sr25519::Public::from_slice(&signer[..]);
+            // let public = sr25519::Public::from_slice(&signer[..]);
             //
             // // ensure!(delegator_signature.len() == 64, Error::<T>::InvalidExecutorSig);
             // let signature = sr25519::Signature::from_slice(&delegator_signature[..]);
@@ -566,7 +566,7 @@ decl_module! {
             // todo: limit bills array length
             let mut total_amount: BalanceOf<T> = BalanceOf::<T>::default();
             for (_account_id, payment) in &bills {
-			    total_amount = total_amount.checked_add(payment).ok_or(Error::<T>::PaymentOverflow)?;
+                total_amount = total_amount.checked_add(payment).ok_or(Error::<T>::PaymentOverflow)?;
             }
             let mut deposit = DepositMap::<T>::get((&employer, &delegator_tea_id)).unwrap();
             ensure!(deposit.amount > total_amount, Error::<T>::InsufficientDeposit);
@@ -592,19 +592,19 @@ decl_module! {
             Self::deposit_event(RawEvent::SettleAccounts(sender, bill));
 
             Ok(())
-		}
+        }
 
-		#[weight = 100]
+        #[weight = 100]
         pub fn update_runtime_activity(
-		    origin,
+            origin,
             tea_id: TeaPubKey,
             cid: Option<Cid>,
             ephemeral_id: TeaPubKey,
             singature: Vec<u8>,
             delegator_pubkey: Option<Cid>,
-		) -> dispatch::DispatchResult {
-			let sender = ensure_signed(origin)?;
-		    ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
+        ) -> dispatch::DispatchResult {
+            let sender = ensure_signed(origin)?;
+            ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
 
             // Verify signature
             let ed25519_pubkey = ed25519::Public(ephemeral_id);
@@ -624,9 +624,9 @@ decl_module! {
 
             RuntimeActivities::<T>::insert(&tea_id, &runtime_activity);
 
-			match delegator_pubkey {
-			    None =>{},
-				Some(pubkey) => {
+            match delegator_pubkey {
+                None =>{},
+                Some(pubkey) => {
                     let mut exist = false;
                     let current_block_number = <frame_system::Module<T>>::block_number();
                     let mut delegates = Delegates::<T>::get();
@@ -641,26 +641,22 @@ decl_module! {
                         delegates.push((pubkey, tea_id, current_block_number));
                     }
                     Delegates::<T>::put(delegates);
-				 }
-			}
+                 }
+            }
 
             Self::deposit_event(RawEvent::UpdateRuntimeActivity(sender, runtime_activity));
 
             Ok(())
-		}
+        }
 
-		fn on_finalize(block_number: T::BlockNumber) {
+        fn on_finalize(block_number: T::BlockNumber) {
             Self::update_runtime_status(block_number);
         }
-	}
+    }
 }
 
-
 impl<T: Trait> Module<T> {
-    pub fn get_delegates(
-        start: u32,
-        count: u32
-    ) -> Vec<(Vec<u8>, [u8; 32], Vec<u8>)> {
+    pub fn get_delegates(start: u32, count: u32) -> Vec<(Vec<u8>, [u8; 32], Vec<u8>)> {
         let delegates = Delegates::<T>::get();
         let current_block_number = <frame_system::Module<T>>::block_number();
         let mut result: Vec<(Vec<u8>, [u8; 32], Vec<u8>)> = vec![];
@@ -696,7 +692,9 @@ impl<T: Trait> Module<T> {
                 }
                 match RuntimeActivities::<T>::get(&tea_id) {
                     Some(runtime_activity) => {
-                        if block_number - runtime_activity.update_height > RUNTIME_ACTIVITY_THRESHOLD.into() {
+                        if block_number - runtime_activity.update_height
+                            > RUNTIME_ACTIVITY_THRESHOLD.into()
+                        {
                             node.status = NodeStatus::Inactive;
                             Nodes::<T>::insert(&tea_id, node);
                         }
@@ -758,10 +756,8 @@ impl<T: Trait> Module<T> {
         debug::info!("get_node_by_ephemeral_id(): {:?}", tea_id);
 
         return match tea_id {
-            Some(id) => {
-                Self::nodes(id)
-            }
-            None => None
+            Some(id) => Self::nodes(id),
+            None => None,
         };
     }
 }
