@@ -1,18 +1,22 @@
 //! RPC interface for the transaction payment module.
 
-use tea_runtime_api::TeaApi as TeaRuntimeApi;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
+use tea_runtime_api::TeaApi as TeaRuntimeApi;
 
 #[rpc]
 pub trait TeaApi<BlockHash> {
     #[rpc(name = "tea_getDelegates")]
-    fn get_delegates(&self, start: u32, count: u32, at: Option<BlockHash>)
-        -> Result<Vec<(Vec<u8>, [u8; 32], Vec<u8>)>>;
+    fn get_delegates(
+        &self,
+        start: u32,
+        count: u32,
+        at: Option<BlockHash>,
+    ) -> Result<Vec<(Vec<u8>, [u8; 32], Vec<u8>)>>;
 }
 
 /// A struct that implements the `TeaApi`.
