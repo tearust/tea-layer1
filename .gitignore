@@ -10,5 +10,6 @@
 
 docker/.local
 docker/target_test
+docker/.cargo
 
 tmp
