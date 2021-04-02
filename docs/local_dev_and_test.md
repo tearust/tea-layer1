@@ -19,5 +19,5 @@ Build
 
 Run
 ```
-./target/debug/tea-layer1 --dev --tmp
+. run-local.sh
 ```
