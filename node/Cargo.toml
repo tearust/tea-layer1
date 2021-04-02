@@ -1,5 +1,5 @@
 [package]
-authors = ['Yang Zhou']
+authors = ['Tearust']
 build = 'build.rs'
 description = 'tea layer1 node'
 edition = '2018'
