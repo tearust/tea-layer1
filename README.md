@@ -21,14 +21,11 @@ Once the development environment is set up, build the node template. This comman
 [Wasm](https://substrate.dev/docs/en/knowledgebase/advanced/executor#wasm-execution) and
 [native](https://substrate.dev/docs/en/knowledgebase/advanced/executor#native-execution) code:
 
-Install rust to nightly 2020-10-06 
+Build on rust nightly 2020-10-06 
 ```bash
-cargo +nightly-2020-10-06 build
+cargo +nightly-2020-10-06 build --release
 ```
 
-```bash
-cargo build --release
-```
 
 ## Run
 
