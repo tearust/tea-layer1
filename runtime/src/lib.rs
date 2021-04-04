@@ -24,6 +24,9 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+pub mod constants;
+use constants::{currency::*};
+
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
     construct_runtime, parameter_types,
@@ -322,6 +325,23 @@ impl pallet_multisig::Trait for Runtime {
     type WeightInfo = weights::pallet_multisig::WeightInfo;
 }
 
+parameter_types! {
+	pub const ConfigDepositBase: Balance = 5 * DOLLARS;
+	pub const FriendDepositFactor: Balance = 50 * CENTS;
+	pub const MaxFriends: u16 = 9;
+	pub const RecoveryDeposit: Balance = 5 * DOLLARS;
+}
+
+impl pallet_recovery::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type ConfigDepositBase = ConfigDepositBase;
+	type FriendDepositFactor = FriendDepositFactor;
+	type MaxFriends = MaxFriends;
+	type RecoveryDeposit = RecoveryDeposit;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
     pub enum Runtime where
@@ -339,9 +359,11 @@ construct_runtime!(
         Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
         // Include the custom logic from the template pallet in the runtime.
         TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
+
         Tea: pallet_tea::{Module, Call, Storage, Event<T>, Config},
         Gluon: pallet_gluon::{Module, Call, Storage, Event<T>, Config},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
+        Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
     }
 );
 

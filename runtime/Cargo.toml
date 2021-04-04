@@ -63,6 +63,8 @@ sp-std = { default-features = false, version = '2.0.0' }
 sp-transaction-pool = { default-features = false, version = '2.0.0' }
 sp-version = { default-features = false, version = '2.0.0' }
 
+pallet-recovery = { default-features = false, version = '2.0.0', path = '../pallets/recovery' }
+
 [features]
 default = ['std']
 runtime-benchmarks = [
@@ -107,4 +109,5 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
+    "pallet-recovery/std",
 ]
