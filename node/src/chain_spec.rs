@@ -5,9 +5,11 @@ use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use tea_runtime::{
-    AccountId, AuraConfig, BalancesConfig, GenesisConfig, GluonConfig, GrandpaConfig, Signature,
+    AccountId, Balance, AuraConfig, BalancesConfig, GenesisConfig, GluonConfig, GrandpaConfig, Signature,
     SudoConfig, SystemConfig, TeaConfig, WASM_BINARY,
+    ElectionsConfig, CouncilConfig, TechnicalCommitteeConfig,
 };
+use tea_runtime::constants::currency::*;
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -145,6 +147,27 @@ fn testnet_genesis(
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
+    let endowed_accounts: Vec<AccountId> = {
+		vec![
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
+			get_account_id_from_seed::<sr25519::Public>("Bob"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie"),
+			get_account_id_from_seed::<sr25519::Public>("Dave"),
+			get_account_id_from_seed::<sr25519::Public>("Eve"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+		]
+	};
+	let num_endowed_accounts = endowed_accounts.len();
+
+	const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
+    const STASH: Balance = 100 * DOLLARS;
+    
     GenesisConfig {
         frame_system: Some(SystemConfig {
             // Add Wasm runtime to storage.
@@ -168,10 +191,29 @@ fn testnet_genesis(
                 .map(|x| (x.1.clone(), 1))
                 .collect(),
         }),
+        pallet_membership_Instance1: Default::default(),
         pallet_sudo: Some(SudoConfig {
             // Assign network admin rights.
             key: root_key,
         }),
+
+        pallet_elections_phragmen: Some(ElectionsConfig {
+			members: endowed_accounts.iter()
+						.take((num_endowed_accounts + 1) / 2)
+						.cloned()
+						.map(|member| (member, STASH))
+						.collect(),
+		}),
+		pallet_collective_Instance1: Some(CouncilConfig::default()),
+		pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
+			members: endowed_accounts.iter()
+						.take((num_endowed_accounts + 1) / 2)
+						.cloned()
+						.collect(),
+			phantom: Default::default(),
+		}),
+
+
         pallet_tea: Some(TeaConfig {
             tpms: vec![
                 (
