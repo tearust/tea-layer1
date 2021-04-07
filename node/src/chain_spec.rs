@@ -144,7 +144,7 @@ fn testnet_genesis(
     wasm_binary: &[u8],
     initial_authorities: Vec<(AuraId, GrandpaId)>,
     root_key: AccountId,
-    endowed_accounts: Vec<AccountId>,
+    _endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
     let endowed_accounts: Vec<AccountId> = {
@@ -165,7 +165,7 @@ fn testnet_genesis(
 	};
 	let num_endowed_accounts = endowed_accounts.len();
 
-	const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
+	// const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
     const STASH: Balance = 100 * DOLLARS;
     
     GenesisConfig {

@@ -19,7 +19,6 @@
 
 use sp_runtime::traits::Convert;
 // use frame_support::traits::{OnUnbalanced, Currency};
-use frame_support::traits::{Currency};
 use crate::{Balance, Balances};
 
 // pub struct Author;
