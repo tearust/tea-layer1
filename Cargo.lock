@@ -1879,12 +1879,14 @@ dependencies = [
 [[package]]
 name = "gluon-rpc"
 version = "2.0.0"
+source = "git+https://github.com/tearust/gluon-pallet#74dbba4a034bf02801f30f44d07f064bccef947f"
 dependencies = [
  "gluon-runtime-api",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
  "parity-scale-codec",
+ "serde",
  "sp-api",
  "sp-blockchain",
  "sp-rpc",
@@ -1894,6 +1896,7 @@ dependencies = [
 [[package]]
 name = "gluon-runtime-api"
 version = "2.0.0"
+source = "git+https://github.com/tearust/gluon-pallet#74dbba4a034bf02801f30f44d07f064bccef947f"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -3641,6 +3644,7 @@ dependencies = [
 [[package]]
 name = "pallet-gluon"
 version = "2.0.0"
+source = "git+https://github.com/tearust/gluon-pallet#74dbba4a034bf02801f30f44d07f064bccef947f"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3768,18 +3772,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-template"
-version = "2.0.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
@@ -6970,7 +6962,6 @@ dependencies = [
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-tea",
- "pallet-template",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -7522,7 +7513,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bfd5b7557925ce778ff9b9ef90e3ade34c524b5ff10e239c69a42d546d2af56"
 dependencies = [
- "rand 0.7.3",
+ "rand 0.3.23",
 ]
 
 [[package]]

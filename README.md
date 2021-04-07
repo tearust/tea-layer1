@@ -22,7 +22,7 @@ Once the development environment is set up, build the node template. This comman
 [native](https://substrate.dev/docs/en/knowledgebase/advanced/executor#native-execution) code:
 
 ```bash
-cargo build --release
+cargo +nightly-2020-10-06 build
 ```
 
 ## Run
@@ -32,7 +32,7 @@ cargo build --release
 Purge any existing dev chain state:
 
 ```bash
-./target/release/node-template purge-chain --dev
+./target/debug/node-template purge-chain --dev
 ```
 
 Start a dev chain:
