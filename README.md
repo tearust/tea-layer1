@@ -174,6 +174,12 @@ Open [https://polkadot.js.org/apps](https://polkadot.js.org/apps)
 Copy and paste the [types.json](./types.json) to settings/develop section.
 After that you can control the layer1 with wallet.
 
+## Unit Test
+```
+cd pallets/tea
+cargo test -- --nocapture
+```
+
 
 
 ## Initial tea node
