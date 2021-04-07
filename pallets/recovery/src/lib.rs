@@ -191,19 +191,7 @@ decl_module! {
 		/// Deposit one of this module's events by using the default implementation.
 		fn deposit_event() = default;
 
-		/// Send a call through a recovered account.
-		///
-		/// The dispatch origin for this call must be _Signed_ and registered to
-		/// be able to make calls on behalf of the recovered account.
-		///
-		/// Parameters:
-		/// - `account`: The recovered account you want to make a call on-behalf-of.
-		/// - `call`: The call you want to make with the recovered account.
-		///
-		/// # <weight>
-		/// - The weight of the `call` + 10,000.
-		/// - One storage lookup to check account is recovered by `who`. O(1)
-		/// # </weight>
+		
 		#[weight = (call.get_dispatch_info().weight + 10_000, call.get_dispatch_info().class)]
 		fn as_recovered(origin,
 			account: T::AccountId,
@@ -379,7 +367,7 @@ decl_module! {
 		///
 		/// Total Complexity: O(V + X)
 		/// # </weight>
-		#[weight = 30_000_000]
+		#[weight = 30_000]
 		fn close_recovery(origin, rescuer: T::AccountId) {
 			let who = ensure_signed(origin)?;
 			// Take the active recovery process started by the rescuer for this account.
@@ -411,7 +399,7 @@ decl_module! {
 		///
 		/// Total Complexity: O(F + X)
 		/// # </weight>
-		#[weight = 30_000_000]
+		#[weight = 30_000]
 		fn remove_recovery(origin) {
 			let who = ensure_signed(origin)?;
 			// Check there are no active recoveries
