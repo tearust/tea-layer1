@@ -32,19 +32,19 @@ cargo +nightly-2020-10-06 build
 Purge any existing dev chain state:
 
 ```bash
-./target/debug/node-template purge-chain --dev
+./target/debug/tea-layer1 purge-chain --dev
 ```
 
 Start a dev chain:
 
 ```bash
-./target/release/node-template --dev
+./target/debug/tea-layer1 --dev
 ```
 
 Or, start a dev chain with detailed logging:
 
 ```bash
-RUST_LOG=debug RUST_BACKTRACE=1 ./target/release/node-template -lruntime=debug --dev
+RUST_LOG=debug RUST_BACKTRACE=1 ./target/debug/tea-layer1 -lruntime=debug --dev
 ```
 
 ### Multi-Node Local Testnet
@@ -168,6 +168,13 @@ by appending your own. A few useful ones are as follow.
 # Check whether the code is compilable
 ./scripts/docker_run.sh cargo check
 ```
+
+## Integrate with Polkadot web wallet.
+Open [https://polkadot.js.org/apps](https://polkadot.js.org/apps)
+Copy and paste the [types.json](./types.json) to settings/develop section.
+After that you can control the layer1 with wallet.
+
+
 
 ## Initial tea node
 > use ed25519 key pair
