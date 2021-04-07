@@ -41,8 +41,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
-/// Import the template pallet.
-pub use pallet_template;
 
 /// Importing a tea pallet
 pub use pallet_tea;
@@ -289,10 +287,6 @@ impl pallet_sudo::Trait for Runtime {
     type Call = Call;
 }
 
-/// Configure the template pallet in pallets/template.
-impl pallet_template::Trait for Runtime {
-    type Event = Event;
-}
 
 impl pallet_tea::Trait for Runtime {
     type Event = Event;
@@ -338,7 +332,6 @@ construct_runtime!(
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
         Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
         // Include the custom logic from the template pallet in the runtime.
-        TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
         Tea: pallet_tea::{Module, Call, Storage, Event<T>, Config},
         Gluon: pallet_gluon::{Module, Call, Storage, Event<T>, Config},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
