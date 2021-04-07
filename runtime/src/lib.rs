@@ -299,6 +299,7 @@ impl pallet_tea::Trait for Runtime {
 impl pallet_gluon::Trait for Runtime {
     type Event = Event;
     type Currency = pallet_balances::Module<Runtime>;
+    
 }
 
 parameter_types! {
