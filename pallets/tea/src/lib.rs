@@ -656,6 +656,8 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+
+    #[allow(clippy::single_match)]
     pub fn get_delegates(start: u32, count: u32) -> Vec<(Vec<u8>, [u8; 32], Vec<u8>)> {
         let delegates = Delegates::<T>::get();
         let current_block_number = <frame_system::Module<T>>::block_number();

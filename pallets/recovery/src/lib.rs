@@ -200,7 +200,7 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			// Check `who` is allowed to make a call on behalf of `account`
 			let target = Self::proxy(&who).ok_or(Error::<T>::NotAllowed)?;
-			ensure!(&target == &account, Error::<T>::NotAllowed);
+			ensure!(target == account, Error::<T>::NotAllowed);
 			call.dispatch(frame_system::RawOrigin::Signed(account).into())
 				.map(|_| ()).map_err(|e| e.error)
 		}
@@ -437,12 +437,12 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	/// Check that friends list is sorted and has no duplicates.
-	fn is_sorted_and_unique(friends: &Vec<T::AccountId>) -> bool {
+	fn is_sorted_and_unique(friends: &[T::AccountId]) -> bool {
 		friends.windows(2).all(|w| w[0] < w[1])
 	}
 
 	/// Check that a user is a friend in the friends list.
-	fn is_friend(friends: &Vec<T::AccountId>, friend: &T::AccountId) -> bool {
+	fn is_friend(friends: &[T::AccountId], friend: &T::AccountId) -> bool {
 		friends.binary_search(&friend).is_ok()
 	}
 
