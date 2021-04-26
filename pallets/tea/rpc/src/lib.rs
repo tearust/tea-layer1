@@ -8,6 +8,7 @@ use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
 use tea_runtime_api::TeaApi as TeaRuntimeApi;
 
+#[allow(clippy::type_complexity)]
 #[rpc]
 pub trait TeaApi<BlockHash> {
     #[rpc(name = "tea_getDelegates")]
@@ -37,6 +38,7 @@ impl<C, M> Tea<C, M> {
     }
 }
 
+#[allow(clippy::type_complexity)]
 impl<C, Block> TeaApi<<Block as BlockT>::Hash> for Tea<C, Block>
 where
     Block: BlockT,
