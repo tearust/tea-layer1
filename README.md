@@ -193,3 +193,9 @@ private key: 882a976b9990228c28e407c42c0da4a9beff8979f080c0a5edefc243a0d51b01c93
 5. tea_id: bd1c0ec25a96172791fe16c28323ceb0c515f17bcd11da4fb183ffd7e6fbb769
 
 private key:  c7bbfdfb4051a84547fc42d5241aaf329e25f35296787975475eab6f86dfec56bd1c0ec25a96172791fe16c28323ceb0c515f17bcd11da4fb183ffd7e6fbb769
+
+
+## Clippy
+```
+. clippy.sh
+```
