@@ -14,6 +14,9 @@ services:
         source: ./docker/.local
         target: /root/.local
     command: bash -c "cargo build --release --target-dir /tearust/tea-layer1/docker/target"
+
+  
+
   test:
     container_name: tea-layer1-build
     image: tearust/layer1-dev-env:0.5

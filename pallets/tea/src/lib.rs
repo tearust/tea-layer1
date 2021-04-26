@@ -183,7 +183,7 @@ decl_storage! {
         build(|config: &GenesisConfig| {
             for (tea_id, ephemeral_id) in config.tpms.iter() {
                 let node = Node {
-                    tea_id: tea_id.clone(),
+                    tea_id: *tea_id,
                     ephemeral_id: *ephemeral_id,
                     profile_cid: Vec::new(),
                     urls: Vec::new(),
@@ -262,7 +262,7 @@ decl_module! {
             let current_block_number = <frame_system::Module<T>>::block_number();
 
             let new_node = Node {
-                tea_id: tea_id.clone(),
+                tea_id,
                 ephemeral_id: [0u8; 32],
                 profile_cid: Vec::new(),
                 urls: Vec::new(),
@@ -376,7 +376,7 @@ decl_module! {
             let payload = (
                 random_seed,
                 sender.clone(),
-                tea_id.clone(),
+                tea_id,
                 <frame_system::Module<T>>::block_number(),
             );
             let _random: U256 = payload.using_encoded(blake2_256).into();
@@ -408,7 +408,7 @@ decl_module! {
             let current_block_number = <frame_system::Module<T>>::block_number();
             let urls_count = urls.len();
             let node = Node {
-                tea_id: tea_id.clone(),
+                tea_id,
                 ephemeral_id,
                 profile_cid,
                 urls,
@@ -425,7 +425,7 @@ decl_module! {
                 <BootNodes>::insert(&tea_id, &tea_id);
             }
 
-            if peer_id.len() > 0 {
+            if !peer_id.is_empty() {
                 PeerIds::insert(peer_id, tea_id);
             }
 
@@ -663,11 +663,11 @@ impl<T: Trait> Module<T> {
         let mut index: u32 = 0;
         for (d, t, b) in delegates {
             if current_block_number - b < RUNTIME_ACTIVITY_THRESHOLD.into() {
-                index = index + 1;
+                index += 1;
                 if index > start {
                     match Nodes::<T>::get(&t) {
                         Some(node) => {
-                            result.push((d, t.into(), node.peer_id));
+                            result.push((d, t, node.peer_id));
                             let size = result.len();
                             let delegates_count = count as usize;
                             if size == delegates_count {
@@ -755,9 +755,9 @@ impl<T: Trait> Module<T> {
         let tea_id = Self::ephemera_ids(ephemeral_id);
         debug::info!("get_node_by_ephemeral_id(): {:?}", tea_id);
 
-        return match tea_id {
+        match tea_id {
             Some(id) => Self::nodes(id),
             None => None,
-        };
+        }
     }
 }

@@ -313,7 +313,7 @@ decl_module! {
 
 			// Either insert the vouch, or return an error that the user already vouched.
 			match active_recovery.friends.binary_search(&who) {
-				Ok(_pos) => Err(Error::<T>::AlreadyVouched)?,
+				Ok(_pos) => return Err(Error::<T>::AlreadyVouched.into()),
 				Err(pos) => active_recovery.friends.insert(pos, who.clone()),
 			}
 			// Update storage with the latest details

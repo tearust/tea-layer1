@@ -3,12 +3,12 @@
 use super::*;
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok};
-use frame_system::offchain::Account;
+
 use hex as hex_o;
 use hex_literal::hex;
-use serde::{Deserialize, Serialize};
-use serde_json::Result;
-use sp_core::crypto::AccountId32;
+
+
+
 use sp_core::{
     crypto, ed25519,
     hash::{H256, H512},
@@ -211,7 +211,7 @@ fn test_add_new_node() {
     new_test_ext().execute_with(|| {
         let public: [u8; 32] =
             hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a44");
-        assert_ok!(TeaModule::add_new_node(Origin::signed(1), public.clone()));
+        assert_ok!(TeaModule::add_new_node(Origin::signed(1), public));
         let target_node = Nodes::<Test>::get(&public).unwrap();
         assert_eq!(
             target_node.create_time,
@@ -225,10 +225,10 @@ fn test_add_new_node_already_exist() {
     new_test_ext().execute_with(|| {
         let public: [u8; 32] =
             hex!("e9889b1c54ccd6cf184901ded892069921d76f7749b6f73bed6cf3b9be1a8a44");
-        let _ = TeaModule::add_new_node(Origin::signed(1), public.clone());
+        let _ = TeaModule::add_new_node(Origin::signed(1), public);
 
         assert_noop!(
-            TeaModule::add_new_node(Origin::signed(1), public.clone()),
+            TeaModule::add_new_node(Origin::signed(1), public),
             Error::<Test>::NodeAlreadyExist
         );
     })
@@ -242,7 +242,7 @@ fn test_update_manifest() {
         let cid = vec![1, 2, 3];
         assert_ok!(TeaModule::update_manifest(
             Origin::signed(1),
-            public.clone(),
+            public,
             cid.clone()
         ));
         let target_cid = <Manifest>::get(&public).unwrap();
@@ -263,8 +263,8 @@ fn test_remote_attestation_node_not_in_ra() {
             hex!("ba9147ba50faca694452db7c458e33a9a0322acbaac24bf35db7bb5165dff3ac");
 
         let node = Node {
-            tea_id: build_in_public.clone(),
-            ephemeral_id: ephemeral_public.clone(),
+            tea_id: build_in_public,
+            ephemeral_id: ephemeral_public,
             profile_cid: Vec::new(),
             urls: Vec::new(),
             peer_id: Vec::new(),
@@ -281,10 +281,10 @@ fn test_remote_attestation_node_not_in_ra() {
         assert_noop!(
             TeaModule::remote_attestation(
                 Origin::signed(1),
-                build_in_public.clone(),
-                target_build_in_public.clone(),
-                is_pass.clone(),
-                signature.clone()
+                build_in_public,
+                target_build_in_public,
+                is_pass,
+                signature
             ),
             Error::<Test>::NodeNotExist
         );
@@ -304,8 +304,8 @@ fn test_remote_attestation_node_not_exist() {
             hex!("ba9147ba50faca694452db7c458e33a9a0322acbaac24bf35db7bb5165dff3ac");
 
         let node = Node {
-            tea_id: build_in_public.clone(),
-            ephemeral_id: ephemeral_public.clone(),
+            tea_id: build_in_public,
+            ephemeral_id: ephemeral_public,
             profile_cid: Vec::new(),
             urls: Vec::new(),
             peer_id: Vec::new(),
@@ -318,8 +318,8 @@ fn test_remote_attestation_node_not_exist() {
         BuildInNodes::insert(&build_in_public, &build_in_public);
 
         let target_node = Node {
-            tea_id: target_build_in_public.clone(),
-            ephemeral_id: ephemeral_public.clone(),
+            tea_id: target_build_in_public,
+            ephemeral_id: ephemeral_public,
             profile_cid: Vec::new(),
             urls: Vec::new(),
             peer_id: Vec::new(),
@@ -338,10 +338,10 @@ fn test_remote_attestation_node_not_exist() {
         assert_noop!(
             TeaModule::remote_attestation(
                 Origin::signed(1),
-                build_in_public.clone(),
-                public.clone(),
-                is_pass.clone(),
-                signature.clone()
+                build_in_public,
+                public,
+                is_pass,
+                signature
             ),
             Error::<Test>::NodeNotExist
         );
@@ -361,8 +361,8 @@ fn test_remote_attestation_node_already_active() {
             hex!("ba9147ba50faca694452db7c458e33a9a0322acbaac24bf35db7bb5165dff3ac");
 
         let node = Node {
-            tea_id: build_in_public.clone(),
-            ephemeral_id: ephemeral_public.clone(),
+            tea_id: build_in_public,
+            ephemeral_id: ephemeral_public,
             profile_cid: Vec::new(),
             urls: Vec::new(),
             peer_id: Vec::new(),
@@ -375,8 +375,8 @@ fn test_remote_attestation_node_already_active() {
         BuildInNodes::insert(&build_in_public, &build_in_public);
 
         let target_node = Node {
-            tea_id: target_build_in_public.clone(),
-            ephemeral_id: ephemeral_public.clone(),
+            tea_id: target_build_in_public,
+            ephemeral_id: ephemeral_public,
             profile_cid: Vec::new(),
             urls: Vec::new(),
             peer_id: Vec::new(),
@@ -393,10 +393,10 @@ fn test_remote_attestation_node_already_active() {
         assert_noop!(
             TeaModule::remote_attestation(
                 Origin::signed(1),
-                build_in_public.clone(),
-                target_build_in_public.clone(),
-                is_pass.clone(),
-                signature.clone()
+                build_in_public,
+                target_build_in_public,
+                is_pass,
+                signature
             ),
             Error::<Test>::NodeAlreadyActive
         );
@@ -416,8 +416,8 @@ fn test_remote_attestation() {
             hex!("ba9147ba50faca694452db7c458e33a9a0322acbaac24bf35db7bb5165dff3ac");
 
         let node = Node {
-            tea_id: build_in_public.clone(),
-            ephemeral_id: ephemeral_public.clone(),
+            tea_id: build_in_public,
+            ephemeral_id: ephemeral_public,
             profile_cid: Vec::new(),
             urls: Vec::new(),
             peer_id: Vec::new(),
@@ -430,8 +430,8 @@ fn test_remote_attestation() {
         BuildInNodes::insert(&build_in_public, &build_in_public);
 
         let target_node = Node {
-            tea_id: target_build_in_public.clone(),
-            ephemeral_id: ephemeral_public.clone(),
+            tea_id: target_build_in_public,
+            ephemeral_id: ephemeral_public,
             profile_cid: Vec::new(),
             urls: Vec::new(),
             peer_id: Vec::new(),
@@ -447,10 +447,10 @@ fn test_remote_attestation() {
         let signature = vec![1, 2, 3];
         assert_ok!(TeaModule::remote_attestation(
             Origin::signed(1),
-            build_in_public.clone(),
-            target_build_in_public.clone(),
-            is_pass.clone(),
-            signature.clone()
+            build_in_public,
+            target_build_in_public,
+            is_pass,
+            signature
         ));
     })
 }
@@ -470,8 +470,8 @@ fn test_update_node_profile() {
         let tea_sig = Vec::new();
 
         let node = Node {
-            tea_id: build_in_public.clone(),
-            ephemeral_id: ephemeral_public.clone(),
+            tea_id: build_in_public,
+            ephemeral_id: ephemeral_public,
             profile_cid: Vec::new(),
             urls: Vec::new(),
             peer_id: Vec::new(),
@@ -485,12 +485,12 @@ fn test_update_node_profile() {
 
         assert_ok!(TeaModule::update_node_profile(
             Origin::signed(1),
-            build_in_public.clone(),
-            ephemeral_public.clone(),
-            profile_cid.clone(),
-            urls.clone(),
-            peer_id.clone(),
-            tea_sig.clone()
+            build_in_public,
+            ephemeral_public,
+            profile_cid,
+            urls,
+            peer_id,
+            tea_sig
         ));
     })
 }
@@ -514,12 +514,12 @@ fn test_update_node_profile_node_not_exist() {
         assert_noop!(
             TeaModule::update_node_profile(
                 Origin::signed(1),
-                build_in_public.clone(),
-                ephemeral_public.clone(),
-                profile_cid.clone(),
-                urls.clone(),
-                peer_id.clone(),
-                tea_sig.clone()
+                build_in_public,
+                ephemeral_public,
+                profile_cid,
+                urls,
+                peer_id,
+                tea_sig
             ),
             Error::<Test>::NodeNotExist
         );
@@ -537,13 +537,13 @@ fn test_add_new_service() {
 
         assert_ok!(TeaModule::add_new_service(
             Origin::signed(1),
-            delegator_ephemeral_id.clone(),
+            delegator_ephemeral_id,
             deployment_id.clone(),
             cid.clone(),
-            cap_checker.clone()
+            cap_checker
         ));
         let service = ServiceMap::get(&cid).unwrap();
-        assert_eq!(service.deployment_id, deployment_id.clone());
+        assert_eq!(service.deployment_id, deployment_id);
     })
 }
 
@@ -560,10 +560,10 @@ fn test_deposit_amount_is_not_enough() {
         assert_noop!(
             TeaModule::deposit(
                 Origin::signed(1),
-                delegator_tea_id.clone(),
-                delegator_ephemeral_id.clone(),
-                delegator_signature.clone(),
-                amount.clone(),
+                delegator_tea_id,
+                delegator_ephemeral_id,
+                delegator_signature,
+                amount,
                 100
             ),
             pallet_balances::Error::<Test, _>::InsufficientBalance
@@ -583,10 +583,10 @@ fn test_deposit() {
 
         assert_ok!(TeaModule::deposit(
             Origin::signed(2),
-            delegator_tea_id.clone(),
-            delegator_ephemeral_id.clone(),
-            delegator_signature.clone(),
-            amount.clone(),
+            delegator_tea_id,
+            delegator_ephemeral_id,
+            delegator_signature,
+            amount,
             100
         ));
     })
