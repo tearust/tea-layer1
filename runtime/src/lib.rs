@@ -298,7 +298,9 @@ impl pallet_tea::Trait for Runtime {
 
 impl pallet_gluon::Trait for Runtime {
     type Event = Event;
-    type Currency = pallet_balances::Module<Runtime>;
+    // type Call = Call;
+    type Currency = Balances;
+    // type Recovery = Recovery;
     
 }
 
@@ -410,7 +412,7 @@ parameter_types! {
 	pub const FriendDepositFactor: Balance = 50 * CENTS;
 	pub const MaxFriends: u16 = 7;
     pub const RecoveryDeposit: Balance = 5 * DOLLARS;
-    pub const TokenUnit: Balance = DOLLARS;
+    // pub const TokenUnit: Balance = DOLLARS;
 }
 
 impl pallet_recovery::Trait for Runtime {
@@ -421,7 +423,6 @@ impl pallet_recovery::Trait for Runtime {
 	type FriendDepositFactor = FriendDepositFactor;
 	type MaxFriends = MaxFriends;
     type RecoveryDeposit = RecoveryDeposit;
-    type TokenUnit = TokenUnit;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -431,26 +432,26 @@ construct_runtime!(
         NodeBlock = opaque::Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-        Aura: pallet_aura::{Module, Config<T>, Inherent},
-        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        TransactionPayment: pallet_transaction_payment::{Module, Storage},
-        Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
+        System: frame_system::{Module, Call, Config, Storage, Event<T>} = 0,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 1,
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent} = 2,
+        Aura: pallet_aura::{Module, Config<T>, Inherent} = 3,
+        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event} = 4,
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>} = 5,
+        TransactionPayment: pallet_transaction_payment::{Module, Storage} = 6,
+        Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>} = 7,
         // Include the custom logic from the template pallet in the runtime.
 
-        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
-		TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 8,
+		TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 9,
+		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 10,
+		TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 11,
 
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
+        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 12,
+        Recovery: pallet_recovery::{Module, Call, Storage, Event<T>} = 13,
 
-        Tea: pallet_tea::{Module, Call, Storage, Event<T>, Config},
-        Gluon: pallet_gluon::{Module, Call, Storage, Event<T>, Config},
+        Tea: pallet_tea::{Module, Call, Storage, Event<T>, Config} = 14,
+        Gluon: pallet_gluon::{Module, Call, Storage, Event<T>, Config} = 15,
 
     }
 );

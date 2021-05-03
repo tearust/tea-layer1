@@ -58,7 +58,6 @@ pub trait Trait: frame_system::Trait {
 	/// threshold.
 	type RecoveryDeposit: Get<BalanceOf<Self>>;
 
-	type TokenUnit: Get<BalanceOf<Self>>;
 }
 
 /// An active recovery process.
