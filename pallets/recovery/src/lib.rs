@@ -72,6 +72,7 @@ pub struct ActiveRecovery<BlockNumber, Balance, AccountId> {
 	friends: Vec<AccountId>,
 }
 
+
 /// Configuration for recovering an account.
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug)]
 pub struct RecoveryConfig<BlockNumber, Balance, AccountId> {
@@ -99,8 +100,17 @@ decl_storage! {
 		/// First account is the account to be recovered, and the second account
 		/// is the user trying to recover the account.
 		pub ActiveRecoveries get(fn active_recovery):
-			double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) T::AccountId =>
-			Option<ActiveRecovery<T::BlockNumber, BalanceOf<T>, T::AccountId>>;
+			double_map 
+				hasher(twox_64_concat) T::AccountId, 
+				hasher(twox_64_concat) T::AccountId 
+			=>
+				Option<ActiveRecovery<T::BlockNumber, BalanceOf<T>, T::AccountId>>;
+
+		pub ActiveRecoveryForOriginal get(fn active_recovery_for_original):
+			map 
+				hasher(twox_64_concat) T::AccountId
+			=> 
+				Vec<T::AccountId>;
 
 		/// The list of allowed proxy accounts.
 		///
@@ -280,6 +290,7 @@ decl_module! {
 			ensure!(<Recoverable<T>>::contains_key(&account), Error::<T>::NotRecoverable);
 			// Check that the recovery process has not already been started
 			ensure!(!<ActiveRecoveries<T>>::contains_key(&account, &who), Error::<T>::AlreadyStarted);
+
 			// Take recovery deposit
 			let recovery_deposit = T::RecoveryDeposit::get();
 			T::Currency::reserve(&who, recovery_deposit)?;
@@ -294,7 +305,19 @@ decl_module! {
 			// debug::info!("recovery_status => {:?}", recovery_status);
 
 			// Create the active recovery storage item
-			<ActiveRecoveries<T>>::insert(&account, &who, recovery_status);
+			<ActiveRecoveries<T>>::insert(&account, &who, recovery_status.clone());
+
+			
+			if ActiveRecoveryForOriginal::<T>::contains_key(&account) {
+				let mut list = ActiveRecoveryForOriginal::<T>::take(&account);
+				list.push(who.clone());
+				ActiveRecoveryForOriginal::<T>::insert(&account, list);
+			} 
+			else {
+				ActiveRecoveryForOriginal::<T>::insert(&account, vec![&who]);
+			}
+
+
 			Self::deposit_event(RawEvent::RecoveryInitiated(account, who));
 		}
 
@@ -371,6 +394,16 @@ decl_module! {
 			let who = ensure_signed(origin)?;
 			// Take the active recovery process started by the rescuer for this account.
 			let active_recovery = <ActiveRecoveries<T>>::take(&who, &rescuer).ok_or(Error::<T>::NotStarted)?;
+
+			let mut list = ActiveRecoveryForOriginal::<T>::take(&who);
+			debug::info!("list 1 => {:?}", list);
+			if let Ok(pos) = list.binary_search(&rescuer) {
+				list.remove(pos);
+			}
+			debug::info!("list 2 => {:?}", list);
+			ActiveRecoveryForOriginal::<T>::insert(&who, list);
+
+
 			// Move the reserved funds from the rescuer to the rescued account.
 			// Acts like a slashing mechanism for those who try to maliciously recover accounts.
 			let _ = T::Currency::repatriate_reserved(&rescuer, &who, active_recovery.deposit, BalanceStatus::Free);

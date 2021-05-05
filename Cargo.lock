@@ -3781,14 +3781,14 @@ dependencies = [
 [[package]]
 name = "pallet-recovery"
 version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b596854bdafd6c165caad932eabba6b256db2c7047a5ab8f75014ef81ac5a57"
 dependencies = [
  "enumflags2",
  "frame-support",
  "frame-system",
+ "pallet-balances",
  "parity-scale-codec",
  "serde",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
