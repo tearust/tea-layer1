@@ -305,7 +305,7 @@ decl_module! {
 			// debug::info!("recovery_status => {:?}", recovery_status);
 
 			// Create the active recovery storage item
-			<ActiveRecoveries<T>>::insert(&account, &who, recovery_status.clone());
+			<ActiveRecoveries<T>>::insert(&account, &who, recovery_status);
 
 			
 			if ActiveRecoveryForOriginal::<T>::contains_key(&account) {
