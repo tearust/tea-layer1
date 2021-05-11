@@ -1,4 +1,4 @@
-FROM paritytech/ci-linux:production
+FROM ubuntu:20.10
 
 COPY ./tmp/tea-layer1 /usr/local/bin/
 
