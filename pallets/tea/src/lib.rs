@@ -351,19 +351,18 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 100]
+        /// update node profile is an expensive operation to prevent abuse
+        #[weight = 10000]
         pub fn update_node_profile(origin,
             tea_id: TeaPubKey,
             ephemeral_id: TeaPubKey,
             profile_cid: Vec<u8>,
             urls: Vec<Url>,
             peer_id: Vec<u8>,
-            tea_sig: Vec<u8>,
         ) -> dispatch::DispatchResult {
             let sender = ensure_signed(origin)?;
 
             ensure!(Nodes::<T>::contains_key(&tea_id), Error::<T>::NodeNotExist);
-            // Self::verify_tea_sig(tea_id.clone(), tea_sig, ephemeral_id)?;
 
             // remove old node info
             let old_node = Nodes::<T>::get(&tea_id).unwrap();
@@ -710,19 +709,6 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    // fn verify_tea_sig(tea_id: TeaPubKey,
-    //                   tea_sig: Vec<u8>,
-    //                   ephemeral_id: TeaPubKey) -> dispatch::DispatchResult {
-    //     let tea_id = ed25519::Public(tea_id);
-    //     ensure!(tea_sig.len() == 64, Error::<T>::InvalidTeaSig);
-    //
-    //     let tea_sig = ed25519::Signature::from_slice(&tea_sig[..]);
-    //     ensure!(sp_io::crypto::ed25519_verify(&tea_sig, &ephemeral_id[..], &tea_id),
-    //             Error::<T>::InvalidTeaSig);
-    //
-    //     Ok(())
-    // }
-    //
     // fn verify_delegate_sig(delegate_tea_id: TeaPubKey,
     //                        delegate_sig: Vec<u8>,
     //                        winner_tea_id: TeaPubKey,
