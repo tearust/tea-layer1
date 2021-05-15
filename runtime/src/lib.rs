@@ -29,6 +29,8 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+
+
 pub mod constants;
 use constants::{currency::*};
 
@@ -121,16 +123,16 @@ pub mod opaque {
 pub mod weights;
 
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("tea-layer1"),
-    impl_name: create_runtime_str!("tea-layer1"),
+    spec_name: create_runtime_str!("tea-layer1-chain"),
+    impl_name: create_runtime_str!("tea-layer1-client"),
     authoring_version: 1,
-    spec_version: 5,
-    impl_version: 2,
+    spec_version: 1,
+    impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
+pub const MILLISECS_PER_BLOCK: u64 = 6_000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
@@ -138,6 +140,7 @@ pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
+
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -257,7 +260,7 @@ impl pallet_timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 500;
+    pub const ExistentialDeposit: u128 = 1000;
     pub const MaxLocks: u32 = 50;
 }
 

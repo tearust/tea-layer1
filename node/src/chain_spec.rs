@@ -1,5 +1,5 @@
 use hex_literal::hex;
-use sc_service::ChainType;
+use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -10,6 +10,9 @@ use tea_runtime::{
     ElectionsConfig, CouncilConfig, TechnicalCommitteeConfig,
 };
 use tea_runtime::constants::currency::*;
+
+use jsonrpc_core::serde_json;
+
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -39,6 +42,14 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
     (get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
 }
 
+fn get_properties(symbol: &str) -> Properties {
+    serde_json::json!({
+        "tokenDecimals": 12,
+        "ss58Format": 0,
+        "tokenSymbol": symbol,
+    }).as_object().unwrap().clone()
+}
+
 pub fn development_config() -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
 
@@ -66,12 +77,12 @@ pub fn development_config() -> Result<ChainSpec, String> {
                     get_account_id_from_seed::<sr25519::Public>("Dave"),
                     get_account_id_from_seed::<sr25519::Public>("Eve"),
                     get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-                    get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
                 ],
                 true,
             )
@@ -83,7 +94,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
         // Protocol ID
         None,
         // Properties
-        None,
+        Some(get_properties("TEA")),
         // Extensions
         None,
     ))
@@ -116,12 +127,12 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
                     get_account_id_from_seed::<sr25519::Public>("Dave"),
                     get_account_id_from_seed::<sr25519::Public>("Eve"),
                     get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-                    get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-                    get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+                    // get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
                 ],
                 true,
             )
@@ -165,7 +176,7 @@ fn testnet_genesis(
 	};
 	let num_endowed_accounts = endowed_accounts.len();
 
-	// const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
+	const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
     const STASH: Balance = 100 * DOLLARS;
     
     GenesisConfig {
@@ -179,7 +190,8 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
-                .map(|k| (k, 1 << 68))
+                .map(|k| (k, 1000))
+                // .map(|k| (k, DOLLARS))
                 .collect(),
         }),
         pallet_aura: Some(AuraConfig {
@@ -198,7 +210,7 @@ fn testnet_genesis(
         }),
 
         pallet_elections_phragmen: Some(ElectionsConfig {
-			members: endowed_accounts.iter()
+			members: vec![].iter()
 						.take((num_endowed_accounts + 1) / 2)
 						.cloned()
 						.map(|member| (member, STASH))
@@ -206,7 +218,7 @@ fn testnet_genesis(
 		}),
 		pallet_collective_Instance1: Some(CouncilConfig::default()),
 		pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
-			members: endowed_accounts.iter()
+			members: vec![].iter()
 						.take((num_endowed_accounts + 1) / 2)
 						.cloned()
 						.collect(),

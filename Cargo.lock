@@ -3698,6 +3698,7 @@ dependencies = [
  "hex",
  "pallet-balances",
  "pallet-randomness-collective-flip",
+ "pallet-recovery",
  "parity-scale-codec",
  "safe-mix",
  "serde",
