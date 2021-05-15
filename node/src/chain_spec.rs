@@ -1,15 +1,20 @@
-use hex_literal::hex;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{sr25519, Pair, Public};
+use sp_core::{sr25519, Pair, Public, crypto};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::AccountId32;
 use tea_runtime::{
     AccountId, Balance, AuraConfig, BalancesConfig, GenesisConfig, GluonConfig, GrandpaConfig, Signature,
     SudoConfig, SystemConfig, TeaConfig, WASM_BINARY,
     ElectionsConfig, CouncilConfig, TechnicalCommitteeConfig,
 };
 use tea_runtime::constants::currency::*;
+
+use std::str::FromStr;
+use sp_core::crypto::Ss58Codec;
+
+use hex_literal::hex;
 
 use jsonrpc_core::serde_json;
 
@@ -158,20 +163,22 @@ fn testnet_genesis(
     _endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
-    let endowed_accounts: Vec<AccountId> = {
+    let endowed_accounts: Vec<(AccountId, u128)> = {
 		vec![
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie"),
-			get_account_id_from_seed::<sr25519::Public>("Dave"),
-			get_account_id_from_seed::<sr25519::Public>("Eve"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+			(get_account_id_from_seed::<sr25519::Public>("Alice"), 1000*DOLLARS),
+			(get_account_id_from_seed::<sr25519::Public>("Bob"), 1*DOLLARS),
+			// (get_account_id_from_seed::<sr25519::Public>("Charlie"), 1000),
+			// (get_account_id_from_seed::<sr25519::Public>("Dave"), 0),
+			// (get_account_id_from_seed::<sr25519::Public>("Eve"), 0),
+			(get_account_id_from_seed::<sr25519::Public>("Ferdie"), 10000*DOLLARS),
+			// get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+			// get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+			// get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+			// get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+			// get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+            // get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+            
+            (crypto::AccountId32::from_str("5EtQMJ6mYtuzgtXiWCW8AjjxdHe4K3CUAWVkgU3agb2oKMGs").unwrap(), 10*DOLLARS)
 		]
 	};
 	let num_endowed_accounts = endowed_accounts.len();
@@ -190,8 +197,7 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
-                .map(|k| (k, 1000))
-                // .map(|k| (k, DOLLARS))
+                .map(|k| (k.0, k.1))
                 .collect(),
         }),
         pallet_aura: Some(AuraConfig {
@@ -251,5 +257,21 @@ fn testnet_genesis(
             ],
         }),
         pallet_gluon: Some(GluonConfig {}),
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_1(){
+        let address = "5EtQMJ6mYtuzgtXiWCW8AjjxdHe4K3CUAWVkgU3agb2oKMGs";
+
+        let ac = crypto::AccountId32::from_str(address).unwrap();
+        println!("{:?}", get_account_id_from_seed::<sr25519::Public>("Alice"));
+
+        println!("{:#?}", ac);
     }
 }
