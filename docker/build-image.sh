@@ -6,7 +6,7 @@ echo "*** Start build tearust/tea-layer1:latest ***"
 
 cd $(dirname ${BASH_SOURCE[0]})/..
 
-sh ./docker/build.sh
+bash ./docker/build.sh
 
 mkdir -p tmp
 
