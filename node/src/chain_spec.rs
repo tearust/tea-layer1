@@ -6,7 +6,7 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_runtime::AccountId32;
 use tea_runtime::{
     AccountId, Balance, AuraConfig, BalancesConfig, GenesisConfig, GluonConfig, GrandpaConfig, Signature,
-    SudoConfig, SystemConfig, TeaConfig, WASM_BINARY,
+    SudoConfig, SystemConfig, TeaConfig, WASM_BINARY, AssetsConfig,
     ElectionsConfig, CouncilConfig, TechnicalCommitteeConfig,
 };
 use tea_runtime::constants::currency::*;
@@ -257,6 +257,12 @@ fn testnet_genesis(
             ],
         }),
         pallet_gluon: Some(GluonConfig {}),
+
+        pallet_assets: Some(AssetsConfig {
+            pcml_list: vec![
+                (get_account_id_from_seed::<sr25519::Public>("Alice"), 1)
+            ]
+        }),
     }
 }
 

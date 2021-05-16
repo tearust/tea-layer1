@@ -3591,6 +3591,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-assets"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-aura"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7058,6 +7072,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "gluon-runtime-api",
  "hex-literal 0.3.1",
+ "pallet-assets",
  "pallet-aura",
  "pallet-balances",
  "pallet-collective",

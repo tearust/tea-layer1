@@ -128,5 +128,12 @@
     "delegatorNonceHash": "Cid",
     "delegatorNonceRsa": "Cid",
     "p1": "Cid"
+  },
+
+
+  "PCML": {
+    "id": "u32",
+    "group": "Cid",
+    "created_at": "BlockNumber"
   }
 }

@@ -70,6 +70,8 @@ pallet-membership = { version = "2.0.0", default-features = false }
 pallet-recovery = { default-features = false, version = '2.0.0', path = '../pallets/recovery' }
 # pallet-recovery = { default-features = false, version = '2.0.0' }
 
+pallet-assets = { default-features = false, version = '2.0.0', path = '../pallets/assets' }
+
 [features]
 default = ['std']
 runtime-benchmarks = [
@@ -114,6 +116,7 @@ std = [
     'sp-transaction-pool/std',
     'sp-version/std',
     "pallet-recovery/std",
+    "pallet-assets/std",
     "pallet-collective/std",
     "pallet-membership/std",
     "pallet-elections-phragmen/std",
