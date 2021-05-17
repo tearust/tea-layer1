@@ -131,9 +131,5 @@
   },
 
 
-  "PCML": {
-    "id": "u32",
-    "group": "Cid",
-    "created_at": "BlockNumber"
-  }
+  "Dai": "u64"
 }

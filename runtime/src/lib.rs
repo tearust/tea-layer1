@@ -438,7 +438,8 @@ parameter_types! {
 impl pallet_assets::Trait for Runtime {
 	type Event = Event;
 	type Balance = u64;
-	type AssetId = u32;
+    type AssetId = u32;
+    type Dai = u64;
 	// type Currency = Balances;
 	// type ForceOrigin = EnsureRoot<AccountId>;
 	// type AssetDepositBase = AssetDepositBase;

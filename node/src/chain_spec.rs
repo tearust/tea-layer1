@@ -155,6 +155,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
     ))
 }
 
+
 /// Configure initial storage state for FRAME modules.
 fn testnet_genesis(
     wasm_binary: &[u8],
@@ -163,14 +164,17 @@ fn testnet_genesis(
     _endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
+
+    let FAUCET_ACCOUNT = crypto::AccountId32::from_str("5EtQMJ6mYtuzgtXiWCW8AjjxdHe4K3CUAWVkgU3agb2oKMGs").unwrap();
+
     let endowed_accounts: Vec<(AccountId, u128)> = {
 		vec![
 			(get_account_id_from_seed::<sr25519::Public>("Alice"), 1000*DOLLARS),
-			(get_account_id_from_seed::<sr25519::Public>("Bob"), 1*DOLLARS),
+			// (get_account_id_from_seed::<sr25519::Public>("Bob"), 1*DOLLARS),
 			// (get_account_id_from_seed::<sr25519::Public>("Charlie"), 1000),
 			// (get_account_id_from_seed::<sr25519::Public>("Dave"), 0),
 			// (get_account_id_from_seed::<sr25519::Public>("Eve"), 0),
-			(get_account_id_from_seed::<sr25519::Public>("Ferdie"), 10000*DOLLARS),
+			// (get_account_id_from_seed::<sr25519::Public>("Ferdie"), 10000*DOLLARS),
 			// get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 			// get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 			// get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
@@ -178,7 +182,7 @@ fn testnet_genesis(
 			// get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
             // get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
             
-            (crypto::AccountId32::from_str("5EtQMJ6mYtuzgtXiWCW8AjjxdHe4K3CUAWVkgU3agb2oKMGs").unwrap(), 10*DOLLARS)
+            (FAUCET_ACCOUNT, 1000*DOLLARS)
 		]
 	};
 	let num_endowed_accounts = endowed_accounts.len();
@@ -259,8 +263,8 @@ fn testnet_genesis(
         pallet_gluon: Some(GluonConfig {}),
 
         pallet_assets: Some(AssetsConfig {
-            pcml_list: vec![
-                (get_account_id_from_seed::<sr25519::Public>("Alice"), 1)
+            dai_list: vec![
+                (get_account_id_from_seed::<sr25519::Public>("Alice"), 1000)
             ]
         }),
     }

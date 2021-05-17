@@ -25,7 +25,10 @@ pub trait Trait: frame_system::Trait {
 	type Balance: Member + Parameter + AtLeast32BitUnsigned + Default + Copy;
 
 	/// The arithmetic type of asset identifier.
-	type AssetId: Parameter + AtLeast32Bit + Default + Copy;
+  type AssetId: Parameter + AtLeast32Bit + Default + Copy;
+  
+  // Id coin for pre-sale, convert to CML when main-net onboard.
+  type Dai: Member + Parameter + AtLeast32BitUnsigned + Default + Copy;
 }
 
 
@@ -101,14 +104,31 @@ decl_module! {
 		// 	Self::deposit_event(RawEvent::Destroyed(id, origin, balance));
     // }
     
+    // #[weight = 0]
+    // fn test_add_pcml(sender) {
+    //   let sender = ensure_signed(sender)?;
+
+    //   let pcml = Self::new_pcml();
+    //   debug::info!("===> {:?}", pcml);
+
+    //   Self::add_pcml_to_account(sender, pcml);
+    // }
+
     #[weight = 0]
-    fn test_add_pcml(sender) {
+    fn transfer_dai(
+      sender, 
+      target: T::AccountId,
+      #[compact] amount: T::Dai,
+    ) {
       let sender = ensure_signed(sender)?;
 
-      let pcml = Self::new_pcml();
-      debug::info!("===> {:?}", pcml);
+      let _sender_dai = Self::get_dai(&sender);
+      let _target_dai = Self::get_dai(&target);
 
-      Self::add_pcml_to_account(sender, pcml);
+      ensure!(_sender_dai >= amount, Error::<T>::NotEnoughDai);
+
+      Self::set_dai(sender, _sender_dai-amount);
+      Self::set_dai(target, _target_dai+amount);
     }
 	}
 }
@@ -130,22 +150,18 @@ decl_event! {
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
-		/// Transfer amount should be non-zero
-		AmountZero,
-		/// Account balance must be greater than or equal to the transfer amount
-		BalanceLow,
-		/// Balance should be non-zero
-		BalanceZero,
+		NotEnoughDai,
 	}
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug)]
-pub struct PCML<AssetId, BlockNumber> {
-  id: AssetId,
-  group: Vec<u8>,
-  created_at: BlockNumber,
-  // updated_at: BlockNumber,
-}
+
+// #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug)]
+// pub struct PCML<AssetId> {
+//   id: AssetId,
+//   group: Vec<u8>,
+
+// }
+
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Assets {
@@ -156,25 +172,32 @@ decl_storage! {
       => 
         T::Balance;
 		/// The next asset identifier up for grabs.
-		LastAssetId: T::AssetId;
+		LastAssetId: T::AssetId = 10000.into();
 		/// The total unit supply of an asset.
 		///
 		/// TWOX-NOTE: `AssetId` is trusted, so this is safe.
     TotalSupply: map hasher(twox_64_concat) T::AssetId => T::Balance;
     
-    PCMLAll: 
-      map 
+    // PCMLAll: 
+    //   map 
+    //     hasher(twox_64_concat) T::AccountId
+    //   => 
+    //     Vec<PCML<T::AssetId, T::BlockNumber>>;
+
+    Dai_Store:
+      map
         hasher(twox_64_concat) T::AccountId
-      => 
-        Vec<PCML<T::AssetId, T::BlockNumber>>;
+      =>
+        T::Dai;
   }
   
   add_extra_genesis {
-    config(pcml_list): Vec<(T::AccountId, u32)>;
+    config(dai_list): Vec<(T::AccountId, T::Dai)>;
     build(|config: &Self| {
-      for (account, n) in config.pcml_list.iter() {
-        let pcml = Module::<T>::new_pcml();
-        Module::<T>::add_pcml_to_account(account.to_owned(), pcml);
+      for (account, amount) in config.dai_list.iter() {
+        // let pcml = Module::<T>::new_pcml();
+        // Module::<T>::add_pcml_to_account(account.to_owned(), pcml);
+        Module::<T>::set_dai(account.to_owned(), *amount);
       }
     })
   }
@@ -202,28 +225,41 @@ impl<T: Trait> Module<T> {
     cid
   }
 
-  pub fn new_pcml() -> PCML<T::AssetId, T::BlockNumber> {
-    let id = Self::get_next_id();
+  // pub fn new_pcml() -> PCML<T::AssetId, T::BlockNumber> {
+  //   let id = Self::get_next_id();
 
-    PCML {
-      id,
-      group: b"nitro".to_vec(),
-      created_at: <system::Module<T>>::block_number(),
-    }
+  //   PCML {
+  //     id,
+  //     group: b"nitro".to_vec(),
+  //     created_at: <system::Module<T>>::block_number(),
+  //   }
+  // }
+
+  // pub fn add_pcml_to_account(
+  //   who: T::AccountId,
+  //   pcml: PCML<T::AssetId, T::BlockNumber>
+  // ) {
+  //   if PCMLAll::<T>::contains_key(&who) {
+  //     let mut list = PCMLAll::<T>::take(&who);
+  //     list.push(pcml);
+  //     PCMLAll::<T>::insert(&who, list);
+  //   } 
+  //   else {
+  //     PCMLAll::<T>::insert(&who, vec![pcml]);
+  //   }
+  // }
+
+  pub fn get_dai(who: &T::AccountId) -> T::Dai {
+    let n = <Dai_Store<T>>::get(&who);
+
+    n
   }
 
-  pub fn add_pcml_to_account(
+  pub fn set_dai(
     who: T::AccountId,
-    pcml: PCML<T::AssetId, T::BlockNumber>
+    amount: T::Dai
   ) {
-    if PCMLAll::<T>::contains_key(&who) {
-      let mut list = PCMLAll::<T>::take(&who);
-      list.push(pcml);
-      PCMLAll::<T>::insert(&who, list);
-    } 
-    else {
-      PCMLAll::<T>::insert(&who, vec![pcml]);
-    }
+    <Dai_Store<T>>::mutate(&who, |n| *n = amount);
   }
 }
 
