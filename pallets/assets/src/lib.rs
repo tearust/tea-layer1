@@ -143,7 +143,7 @@ decl_module! {
 			ensure!(_sender_dai > 0.into(), Error::<T>::NotEnoughDai);
 
 			// TODO, check dai is frozen or live
-			let status = b"Seed_Live".to_vec();
+			let status = b"Seed_Frozen".to_vec();
 
 			// dai - 1
 			Self::set_dai(&sender, _sender_dai-1.into());
@@ -310,7 +310,7 @@ impl<T: Trait> Module<T> {
 	) {
 		if CmlStore::<T>::contains_key(&who) {
       let mut list = CmlStore::<T>::take(&who);
-      list.push(cml);
+      list.insert(0, cml);
       CmlStore::<T>::insert(&who, list);
     } 
     else {
@@ -319,6 +319,33 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn remove_cml_by_id() {}
+
+	fn get_cml_list_by_account(
+		who: &T::AccountId,
+	) -> Vec<CML<T::AssetId, T::AccountId, T::BlockNumber>> {
+		let list = {
+			if <CmlStore<T>>::contains_key(&who) {
+				CmlStore::<T>::get(&who)
+			}
+			else {
+				vec![]
+			}
+		};
+
+		list
+	}
+
+	fn find_cml_index(
+		who: &T::AccountId,
+		cml_id: &T::AssetId,
+	) -> i32 {
+		let list = Self::get_cml_list_by_account(&who);
+
+		match list.binary_search_by(|cml| cml.id.cmp(&cml_id)) {
+			Ok(i) => i as i32,
+			Err(_) => -1,
+		}
+	}
 
 }
 
