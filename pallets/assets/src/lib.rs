@@ -154,13 +154,25 @@ decl_error! {
 	}
 }
 
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug)]
+pub struct StakingItem<AccountId, AssetId> {
+	owner: AccountId,
+	category: Vec<u8>,   // seed, cml
+	amount: u128,  // amount of tea
+	cml: Vec<AssetId>,
+}
 
-// #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug)]
-// pub struct PCML<AssetId> {
-//   id: AssetId,
-//   group: Vec<u8>,
-
-// }
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug)]
+pub struct CML<AssetId, AccountId, BlockNumber> {
+  id: AssetId,
+  group: Vec<u8>,   // nitro
+	status: Vec<u8>,  // Seed_Live, Seed_Frozen, Seed_Planting, CML_Live
+	life_time: BlockNumber, // whole life time for CML
+	lock_time: BlockNumber, 
+	mining_rate: f32, // 0.8 - 1.2
+	staking_slot: Vec<StakingItem<AccountId, AssetId>>,
+	created_at: BlockNumber,
+}
 
 
 decl_storage! {
