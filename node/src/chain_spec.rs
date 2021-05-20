@@ -264,7 +264,7 @@ fn testnet_genesis(
 
         pallet_assets: Some(AssetsConfig {
             dai_list: vec![
-                (get_account_id_from_seed::<sr25519::Public>("Alice"), 1000)
+                (get_account_id_from_seed::<sr25519::Public>("Alice"), 1389)
             ]
         }),
     }
