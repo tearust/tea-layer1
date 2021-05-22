@@ -182,7 +182,7 @@ fn testnet_genesis(
 			// get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
             // get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
             
-            (FAUCET_ACCOUNT, 1000*DOLLARS)
+            (FAUCET_ACCOUNT, 100000*DOLLARS)
 		]
 	};
 	let num_endowed_accounts = endowed_accounts.len();
@@ -264,7 +264,8 @@ fn testnet_genesis(
 
         pallet_assets: Some(AssetsConfig {
             dai_list: vec![
-                (get_account_id_from_seed::<sr25519::Public>("Alice"), 1389)
+                (get_account_id_from_seed::<sr25519::Public>("Alice"), 1389),
+                (crypto::AccountId32::from_str("5EtQMJ6mYtuzgtXiWCW8AjjxdHe4K3CUAWVkgU3agb2oKMGs").unwrap(), 1389),
             ]
         }),
     }

@@ -135,7 +135,7 @@
   "StakingItem": {
     "owner": "AccountId",
     "category": "Cid",
-    "amount": "u128",
+    "amount": "u32",
     "cml": "Vec<AssetId>"
   },
   "CML": {

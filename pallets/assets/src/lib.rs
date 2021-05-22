@@ -124,8 +124,6 @@ decl_module! {
 			let max_price: BalanceOf<T> = T::Unit::get() * T::StakingPrice::get().into();
 			ensure!(balance >= max_price, Error::<T>::NotEnoughTeaToStaking);
 
-			Self::updateCmlToActive(&sender, &cml_id, miner_id.clone())?;
-			<MinerItemStore>::insert(&miner_id, miner_item);
 
 			let staking_item = StakingItem {
 				owner: sender.clone(),
@@ -133,8 +131,10 @@ decl_module! {
 				amount: T::StakingPrice::get(),
 				cml: Vec::new(),
 			};
-			debug::info!("1---- {:?}", staking_item);
-			Self::stakingToCml(staking_item, &sender, &cml_id)?;
+			Self::updateCmlToActive(&sender, &cml_id, miner_id.clone(), staking_item)?;
+			<MinerItemStore>::insert(&miner_id, miner_item);
+
+		
 			debug::info!("TODO ---- lock balance");
 
 			Ok(())
@@ -340,7 +340,7 @@ impl<T: Trait> Module<T> {
 				vec![]
 			}
 		};
-
+		
 		list
 	}
 
@@ -351,10 +351,15 @@ impl<T: Trait> Module<T> {
 	) {
 		CmlStore::<T>::mutate(&who, |list| {
 			list.remove(index);
-
 			list.insert(index, cml);
+
 		});
 
+		// let mut cml_list = CmlStore::<T>::take(&who);
+		// cml_list.remove(index);
+		// cml_list.insert(index, cml);
+
+		// CmlStore::<T>::insert(&who, cml_list);
 	}
 
 	fn find_cml_index(
@@ -363,9 +368,10 @@ impl<T: Trait> Module<T> {
 	) -> (Vec<CML<T::AssetId, T::AccountId, T::BlockNumber>>, i32) {
 		let list = Self::get_cml_list_by_account(&who);
 
-		let index = match list.binary_search_by(|cml| cml.id.cmp(cml_id)) {
-			Ok(i) => i as i32,
-			Err(_) => -1,
+
+		let index = match list.iter().position(|cml| cml.id == *cml_id) {
+			Some(i) => i as i32,
+			None => -1,
 		};
 
 		(list, index)
@@ -375,6 +381,7 @@ impl<T: Trait> Module<T> {
 		who: &T::AccountId,
 		cml_id: &T::AssetId,
 		miner_id: Vec<u8>,
+		staking_item: StakingItem<T::AccountId, T::AssetId>,
 	) -> Result<(), Error<T>> {
 		let (mut list, index) = Self::find_cml_index(&who, &cml_id);
 
@@ -386,6 +393,8 @@ impl<T: Trait> Module<T> {
 
 		cml.status = b"CML_Live".to_vec();
 		cml.miner_id = miner_id;
+
+		cml.staking_slot.push(staking_item);
 
 		Self::set_cml_by_index(&who, cml.clone(), index as usize);
 
@@ -409,9 +418,9 @@ impl<T: Trait> Module<T> {
 		if(cml.status != b"CML_Live".to_vec()){
 			return Err(Error::<T>::CMLNotLive);
 		}
-debug::info!("1111 : {:?}", staking_item);
+
 		cml.staking_slot.push(staking_item);
-		debug::info!("2222 : {:?}", cml);
+
 		Self::set_cml_by_index(&who, cml.clone(), index as usize);
 		
 		Ok(())
