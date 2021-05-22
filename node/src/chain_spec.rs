@@ -169,8 +169,8 @@ fn testnet_genesis(
 
     let endowed_accounts: Vec<(AccountId, u128)> = {
 		vec![
-			(get_account_id_from_seed::<sr25519::Public>("Alice"), 1000*DOLLARS),
-			// (get_account_id_from_seed::<sr25519::Public>("Bob"), 1*DOLLARS),
+			(get_account_id_from_seed::<sr25519::Public>("Alice"), 10000*DOLLARS),
+			(get_account_id_from_seed::<sr25519::Public>("Bob"), 100*DOLLARS),
 			// (get_account_id_from_seed::<sr25519::Public>("Charlie"), 1000),
 			// (get_account_id_from_seed::<sr25519::Public>("Dave"), 0),
 			// (get_account_id_from_seed::<sr25519::Public>("Eve"), 0),

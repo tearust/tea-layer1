@@ -1,10 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	decl_module, decl_event, decl_storage, decl_error, ensure,
+	decl_module, decl_event, decl_storage, decl_error, ensure, 
 	Parameter, RuntimeDebug, weights::GetDispatchInfo,
-	traits::{Currency, ReservableCurrency, Get, BalanceStatus},
-	dispatch::PostDispatchInfo,
+	traits::{Currency, LockableCurrency, BalanceStatus, Get,},
+	dispatch,
 	debug,
 };
 
@@ -14,22 +14,35 @@ use frame_system::{self as system, ensure_signed, ensure_root};
 use sp_runtime::traits::One;
 use codec::{Encode, Decode};
 
+use pallet_balances as balances;
+
 #[cfg(test)]
 mod tests;
 
+// pub const DOLLARS: u128 = 1_000_000_000_000;
+// pub const StakingPrice: u32 = 1000;
+
+type BalanceOf<T> =
+    <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+
 /// The module configuration trait.
-pub trait Trait: frame_system::Trait {
+pub trait Trait: frame_system::Trait + balances::Trait {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
-	/// The units in which we record balances.
-	type Balance: Member + Parameter + AtLeast32BitUnsigned + Default + Copy;
 
 	/// The arithmetic type of asset identifier.
-  type AssetId: Parameter + AtLeast32Bit + Default + Copy;
+	type AssetId: Parameter + AtLeast32Bit + Default + Copy;
+	
+	// type LockableCurrency: LockableCurrency<Self::AccountId>;
+
+	type Currency: Currency<Self::AccountId>;
   
   // Id coin for pre-sale, convert to CML when main-net onboard.
-  type Dai: Member + Parameter + AtLeast32BitUnsigned + Default + Copy;
+	type Dai: Member + Parameter + AtLeast32BitUnsigned + Default + Copy;
+
+	type Unit: Get<BalanceOf<Self>>;
+	type StakingPrice: Get<u32>;
 }
 
 
@@ -38,72 +51,6 @@ decl_module! {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
-		/// Issue a new class of fungible assets. There are, and will only ever be, `total`
-		/// such assets and they'll all belong to the `origin` initially. It will have an
-		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
-		///
-		/// # <weight>
-		/// - `O(1)`
-		/// - 1 storage mutation (codec `O(1)`).
-		/// - 2 storage writes (condec `O(1)`).
-		/// - 1 event.
-		/// # </weight>
-		// #[weight = 0]
-		// fn issue(origin, #[compact] total: T::Balance) {
-		// 	let origin = ensure_signed(origin)?;
-
-		// 	let id = Self::next_asset_id();
-		// 	<NextAssetId<T>>::mutate(|id| *id += One::one());
-
-		// 	<Balances<T>>::insert((id, &origin), total);
-		// 	<TotalSupply<T>>::insert(id, total);
-
-		// 	Self::deposit_event(RawEvent::Issued(id, origin, total));
-		// }
-
-		/// Move some assets from one holder to another.
-		///
-		/// # <weight>
-		/// - `O(1)`
-		/// - 1 static lookup
-		/// - 2 storage mutations (codec `O(1)`).
-		/// - 1 event.
-		/// # </weight>
-		// #[weight = 0]
-		// fn transfer(origin,
-		// 	#[compact] id: T::AssetId,
-		// 	target: <T::Lookup as StaticLookup>::Source,
-		// 	#[compact] amount: T::Balance
-		// ) {
-		// 	let origin = ensure_signed(origin)?;
-		// 	let origin_account = (id, origin.clone());
-		// 	let origin_balance = <Balances<T>>::get(&origin_account);
-		// 	let target = T::Lookup::lookup(target)?;
-		// 	ensure!(!amount.is_zero(), Error::<T>::AmountZero);
-		// 	ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
-
-		// 	Self::deposit_event(RawEvent::Transferred(id, origin, target.clone(), amount));
-		// 	<Balances<T>>::insert(origin_account, origin_balance - amount);
-		// 	<Balances<T>>::mutate((id, target), |balance| *balance += amount);
-		// }
-
-		/// Destroy any assets of `id` owned by `origin`.
-		///
-		/// # <weight>
-		/// - `O(1)`
-		/// - 1 storage mutation (codec `O(1)`).
-		/// - 1 storage deletion (codec `O(1)`).
-		/// - 1 event.
-		/// # </weight>
-		// #[weight = 0]
-		// fn destroy(origin, #[compact] id: T::AssetId) {
-		// 	let origin = ensure_signed(origin)?;
-		// 	let balance = <Balances<T>>::take((id, &origin));
-		// 	ensure!(!balance.is_zero(), Error::<T>::BalanceZero);
-
-		// 	<TotalSupply<T>>::mutate(id, |total_supply| *total_supply -= balance);
-		// 	Self::deposit_event(RawEvent::Destroyed(id, origin, balance));
-    // }
     
     // #[weight = 0]
     // fn test_add_pcml(sender) {
@@ -143,7 +90,7 @@ decl_module! {
 			ensure!(_sender_dai > 0.into(), Error::<T>::NotEnoughDai);
 
 			// TODO, check dai is frozen or live
-			let status = b"Seed_Live".to_vec();
+			let status = b"Seed_Frozen".to_vec();
 
 			// dai - 1
 			Self::set_dai(&sender, _sender_dai-1.into());
@@ -153,36 +100,87 @@ decl_module! {
 			Self::add_cml(&sender, cml);
 
 		}
+
+		#[weight = 1_000]
+		fn active_cml_for_nitro(
+			sender,
+			cml_id: T::AssetId,
+			miner_id: Vec<u8>,
+			miner_ip: Vec<u8>,
+		) -> dispatch::DispatchResult {
+			let sender = ensure_signed(sender)?;
+
+			let miner_item = MinerItem {
+				id: miner_id.clone(),
+				group: b"nitro".to_vec(),
+				ip: miner_ip,
+				status: b"active".to_vec(),
+			};
+
+			ensure!(!<MinerItemStore>::contains_key(&miner_id), Error::<T>::MinerAlreadyExist);
+
+			let balance = T::Currency::free_balance(&sender);
+
+			let max_price: BalanceOf<T> = T::Unit::get() * T::StakingPrice::get().into();
+			ensure!(balance >= max_price, Error::<T>::NotEnoughTeaToStaking);
+
+			Self::updateCmlToActive(&sender, &cml_id, miner_id.clone())?;
+			<MinerItemStore>::insert(&miner_id, miner_item);
+
+			let staking_item = StakingItem {
+				owner: sender.clone(),
+				category: b"tea".to_vec(),
+				amount: T::StakingPrice::get(),
+				cml: Vec::new(),
+			};
+			debug::info!("1---- {:?}", staking_item);
+			Self::stakingToCml(staking_item, &sender, &cml_id)?;
+			debug::info!("TODO ---- lock balance");
+
+			Ok(())
+		}
 	}
 }
 
 decl_event! {
 	pub enum Event<T> where
 		<T as frame_system::Trait>::AccountId,
-		<T as Trait>::Balance,
+		// <T as Trait>::Balance,
 		<T as Trait>::AssetId,
 	{
 		/// Some assets were issued. \[asset_id, owner, total_supply\]
-		Issued(AssetId, AccountId, Balance),
-		/// Some assets were transferred. \[asset_id, from, to, amount\]
-		Transferred(AssetId, AccountId, AccountId, Balance),
-		/// Some assets were destroyed. \[asset_id, owner, balance\]
-		Destroyed(AssetId, AccountId, Balance),
+		Issued(AssetId, AccountId),
+		// /// Some assets were transferred. \[asset_id, from, to, amount\]
+		// Transferred(AssetId, AccountId, AccountId, Balance),
+		// /// Some assets were destroyed. \[asset_id, owner, balance\]
+		// Destroyed(AssetId, AccountId, Balance),
 	}
 }
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
 		NotEnoughDai,
+		NotFoundCML,
+		CMLNotLive,
+		NotEnoughTeaToStaking,
+		MinerAlreadyExist,
 	}
 }
 
 #[derive(Clone, Encode, Decode, Default, RuntimeDebug)]
 pub struct StakingItem<AccountId, AssetId> {
 	owner: AccountId,
-	category: Vec<u8>,   // seed, cml
-	amount: u128,  // amount of tea
+	category: Vec<u8>,   // seed, tea
+	amount: u32,  // amount of tea
 	cml: Vec<AssetId>,
+}
+
+#[derive(Clone, Encode, Decode, Default, RuntimeDebug)]
+pub struct MinerItem {
+	id: Vec<u8>,
+	group: Vec<u8>,
+	ip: Vec<u8>,
+	status: Vec<u8>,
 }
 
 #[derive(Clone, Encode, Decode, Default, RuntimeDebug)]
@@ -195,7 +193,9 @@ pub struct CML<AssetId, AccountId, BlockNumber> {
 	mining_rate: u8, // 8 - 12, default 10
 	staking_slot: Vec<StakingItem<AccountId, AssetId>>,
 	created_at: BlockNumber,
+	miner_id: Vec<u8>,
 }
+
 
 
 decl_storage! {
@@ -223,7 +223,14 @@ decl_storage! {
       map
         hasher(twox_64_concat) T::AccountId
       =>
-        T::Dai;
+				T::Dai;
+				
+		MinerItemStore:
+			map
+				hasher(identity) Vec<u8>
+			=>
+				MinerItem;
+
   }
   
   add_extra_genesis {
@@ -268,6 +275,7 @@ impl<T: Trait> Module<T> {
 		10 as u8
 	}
 
+
   fn new_cml_from_dai(
 		group: Vec<u8>,
 		status: Vec<u8>,  // Seed_Live, Seed_Frozen
@@ -287,6 +295,7 @@ impl<T: Trait> Module<T> {
 			lock_time,
 			staking_slot: vec![],
 			created_at: current_block,
+			miner_id: b"".to_vec(),
 		}
 
   }
@@ -310,7 +319,7 @@ impl<T: Trait> Module<T> {
 	) {
 		if CmlStore::<T>::contains_key(&who) {
       let mut list = CmlStore::<T>::take(&who);
-      list.push(cml);
+      list.insert(0, cml);
       CmlStore::<T>::insert(&who, list);
     } 
     else {
@@ -319,6 +328,95 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn remove_cml_by_id() {}
+
+	fn get_cml_list_by_account(
+		who: &T::AccountId,
+	) -> Vec<CML<T::AssetId, T::AccountId, T::BlockNumber>> {
+		let list = {
+			if <CmlStore<T>>::contains_key(&who) {
+				CmlStore::<T>::get(&who)
+			}
+			else {
+				vec![]
+			}
+		};
+
+		list
+	}
+
+	fn set_cml_by_index(
+		who: &T::AccountId,
+		cml: CML<T::AssetId, T::AccountId, T::BlockNumber>,
+		index: usize,
+	) {
+		CmlStore::<T>::mutate(&who, |list| {
+			list.remove(index);
+
+			list.insert(index, cml);
+		});
+
+	}
+
+	fn find_cml_index(
+		who: &T::AccountId,
+		cml_id: &T::AssetId,
+	) -> (Vec<CML<T::AssetId, T::AccountId, T::BlockNumber>>, i32) {
+		let list = Self::get_cml_list_by_account(&who);
+
+		let index = match list.binary_search_by(|cml| cml.id.cmp(cml_id)) {
+			Ok(i) => i as i32,
+			Err(_) => -1,
+		};
+
+		(list, index)
+	}
+
+	fn updateCmlToActive(
+		who: &T::AccountId,
+		cml_id: &T::AssetId,
+		miner_id: Vec<u8>,
+	) -> Result<(), Error<T>> {
+		let (mut list, index) = Self::find_cml_index(&who, &cml_id);
+
+		if(index < 0){
+			return Err(Error::<T>::NotFoundCML);
+		}
+
+		let cml: &mut CML<T::AssetId, T::AccountId, T::BlockNumber> = list.get_mut(index as usize).unwrap();
+
+		cml.status = b"CML_Live".to_vec();
+		cml.miner_id = miner_id;
+
+		Self::set_cml_by_index(&who, cml.clone(), index as usize);
+
+		Ok(())
+	}
+
+	fn stakingToCml(
+		staking_item: StakingItem<T::AccountId, T::AssetId>,
+
+		who: &T::AccountId,
+		target_cml_id: &T::AssetId,
+	) -> Result<(), Error<T>> {
+		let (mut list, index) = Self::find_cml_index(&who, &target_cml_id);
+
+		if(index < 0){
+			return Err(Error::<T>::NotFoundCML);
+		}
+
+		let cml: &mut CML<T::AssetId, T::AccountId, T::BlockNumber> = list.get_mut(index as usize).unwrap();
+
+		if(cml.status != b"CML_Live".to_vec()){
+			return Err(Error::<T>::CMLNotLive);
+		}
+debug::info!("1111 : {:?}", staking_item);
+		cml.staking_slot.push(staking_item);
+		debug::info!("2222 : {:?}", cml);
+		Self::set_cml_by_index(&who, cml.clone(), index as usize);
+		
+		Ok(())
+	}
+
 
 }
 

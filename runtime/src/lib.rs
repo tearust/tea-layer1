@@ -431,16 +431,22 @@ impl pallet_recovery::Trait for Runtime {
 parameter_types! {
 	// pub const AssetDepositBase: Balance = 100 * DOLLARS;
 	// pub const AssetDepositPerZombie: Balance = 1 * DOLLARS;
-	pub const StringLimit: u32 = 50;
+    pub const StringLimit: u32 = 50;
+    pub const Unit: Balance = 1 * DOLLARS;
+    pub const StakingPrice: u32 = 1000;
 	// pub const MetadataDepositBase: Balance = 10 * DOLLARS;
 	// pub const MetadataDepositPerByte: Balance = 1 * DOLLARS;
 }
 impl pallet_assets::Trait for Runtime {
 	type Event = Event;
-	type Balance = u64;
+	// type Balance = u64;
     type AssetId = u32;
     type Dai = u64;
-	// type Currency = Balances;
+    type Currency = Balances;
+    type Unit = Unit;
+    type StakingPrice = StakingPrice;
+    // type LockableCurrency = Balances;
+    
 	// type ForceOrigin = EnsureRoot<AccountId>;
 	// type AssetDepositBase = AssetDepositBase;
 	// type AssetDepositPerZombie = AssetDepositPerZombie;
